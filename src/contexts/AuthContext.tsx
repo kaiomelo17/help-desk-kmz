@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { listUsuarios, createUsuario } from '@/lib/api/usuarios';
 
 interface User {
   id: string;
   email: string;
   name: string;
   role: 'admin' | 'user';
+  tier: 'vip' | 'padrao';
 }
 
 interface AuthContextType {
@@ -18,38 +20,39 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('helpdesk_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('helpdesk_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
     }
-  }, []);
+  });
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulação de login - em produção, validar com backend
-    if (email === 'admin@concrem.com' && password === 'admin123') {
-      const userData = {
-        id: '1',
-        email,
-        name: 'Administrador',
-        role: 'admin' as const,
-      };
-      setUser(userData);
-      localStorage.setItem('helpdesk_user', JSON.stringify(userData));
-      return true;
-    }
-    return false;
+  const login = async (username: string, password: string): Promise<boolean> => {
+    const rows = await listUsuarios()
+    const found = rows.find(u => (u.username || '') === username && (u.password_hash || '') === password)
+    if (!found) return false
+    const userData = {
+      id: found.id,
+      email: found.username,
+      name: found.name,
+      role: (found.is_admin === 1 || found.tier === 'admin') ? 'admin' as const : 'user' as const,
+      tier: (found.tier === 'vip' || found.tier === 'admin') ? 'vip' as const : 'padrao' as const,
+    };
+    setUser(userData);
+    localStorage.setItem('helpdesk_user', JSON.stringify(userData));
+    return true;
   };
 
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    // Simulação de registro
+  const register = async (username: string, password: string, name: string): Promise<boolean> => {
+    const created = await createUsuario({ nome: name, username, password, tipo: 'padrao' })
     const userData = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role: 'user' as const,
+      id: created.id,
+      email: created.username,
+      name: created.name,
+      role: (created.tier === 'admin') ? 'admin' as const : 'user' as const,
+      tier: (created.tier === 'vip' || created.tier === 'admin') ? 'vip' as const : 'padrao' as const,
     };
     setUser(userData);
     localStorage.setItem('helpdesk_user', JSON.stringify(userData));

@@ -8,96 +8,44 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 217 33% 17%;
+    --primary: 142 93% 8%;
+    --primary-hover: 142 93% 15%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 51% 24%;
+    --secondary-foreground: 0 0% 100%;
+
+    --background: 214 32% 97%;
+    --foreground: 210 24% 24%;
 
     --card: 0 0% 100%;
-    --card-foreground: 217 33% 17%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 17%;
-
-    --primary: 217 91% 40%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 217 33% 17%;
+    --card-foreground: 210 24% 24%;
 
     --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 213 12% 52%;
 
-    --accent: 217 91% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 171 100% 40%;
+
+    --success: 171 100% 40%;
+    --warning: 27 90% 65%;
+    --destructive: 0 93% 74%;
+    --accent: 204 71% 57%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
-    --ring: 217 91% 40%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 217 91% 40%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 217 91% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 213 12% 52%;
+    --sidebar-primary: 210 51% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 91% 35%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 217 91% 35%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 214 32% 97%;
+    --sidebar-accent-foreground: 210 24% 24%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 171 100% 40%;
   }
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 217 32% 24%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217 32% 24%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 217 91% 50%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-
-    --border: 217 32% 24%;
-    --input: 217 32% 24%;
-    --ring: 217 91% 60%;
-    
-    --sidebar-background: 217 33% 17%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 32% 24%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 32% 24%;
-    --sidebar-ring: 217 91% 60%;
-  }
+  
 }
 
 @layer base {
@@ -107,7 +55,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -126,5 +74,49 @@ All colors MUST be HSL.
   
   .section-title {
     @apply text-xl font-semibold text-foreground mb-4;
+  }
+}
+
+/* Print styles for A4 PDF of the Responsibility Term */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide everything except the term */
+  body * {
+    visibility: hidden;
+  }
+  #termo-responsabilidade, #termo-responsabilidade * {
+    visibility: visible;
+  }
+
+  /* Make sure the term lays out cleanly on one A4 page */
+  #termo-responsabilidade {
+    position: static !important;
+    width: auto;
+    max-width: 170mm;
+    margin: 0 auto;
+    background: #ffffff !important;
+    border-color: #d1d5db !important; /* gray-300 */
+  }
+
+  /* Ensure the logo is visible at the header */
+  #termo-responsabilidade img {
+    display: block;
+    max-height: 25mm;
+    object-fit: contain;
+  }
+
+  /* Remove dialog overlay in print */
+  .dialog-overlay {
+    display: none !important;
   }
 }

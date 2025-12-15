@@ -1,45 +1,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Computer, HeadphonesIcon, Users, Package, TrendingUp, Clock } from 'lucide-react';
+import { Computer, HeadphonesIcon, Users, Package, TrendingUp, Clock, Wifi } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { listEquipamentos } from '@/lib/api/equipamentos';
+import { listChamados } from '@/lib/api/chamados';
+import { listUsuarios } from '@/lib/api/usuarios';
+import { listProdutos } from '@/lib/api/produtos';
 
 const Dashboard = () => {
+  const { data: equipamentos } = useQuery({ queryKey: ['equipamentos'], queryFn: listEquipamentos, staleTime: 30000 })
+  const { data: chamados } = useQuery({ queryKey: ['chamados'], queryFn: listChamados, staleTime: 30000 })
+  const { data: usuarios } = useQuery({ queryKey: ['usuarios'], queryFn: listUsuarios, staleTime: 30000 })
+  const { data: produtos } = useQuery({ queryKey: ['produtos'], queryFn: listProdutos, staleTime: 30000 })
+  const equipamentosCount = equipamentos?.length ?? 0
+  const chamadosAbertos = (chamados ?? []).filter(c => c.status === 'Aberto' || c.status === 'Em Andamento').length
+  const usuariosCount = usuarios?.length ?? 0
+  const produtosCount = produtos?.length ?? 0
   const stats = [
-    {
-      title: 'Equipamentos',
-      value: '156',
-      icon: Computer,
-      change: '+12%',
-      changeType: 'positive' as const,
-    },
-    {
-      title: 'Chamados Abertos',
-      value: '23',
-      icon: HeadphonesIcon,
-      change: '-8%',
-      changeType: 'positive' as const,
-    },
-    {
-      title: 'Usuários Ativos',
-      value: '89',
-      icon: Users,
-      change: '+5%',
-      changeType: 'positive' as const,
-    },
-    {
-      title: 'Produtos',
-      value: '342',
-      icon: Package,
-      change: '+18%',
-      changeType: 'positive' as const,
-    },
+    { title: 'Equipamentos', value: String(equipamentosCount), icon: Computer, change: '', changeType: 'positive' as const },
+    { title: 'Chamados Abertos', value: String(chamadosAbertos), icon: HeadphonesIcon, change: '', changeType: 'positive' as const },
+    { title: 'Usuários', value: String(usuariosCount), icon: Users, change: '', changeType: 'positive' as const },
+    { title: 'Produtos', value: String(produtosCount), icon: Package, change: '', changeType: 'positive' as const },
   ];
 
-  const recentTickets = [
-    { id: 1, title: 'Impressora não funciona', user: 'João Silva', status: 'Em Andamento', priority: 'alta', time: '2h atrás' },
-    { id: 2, title: 'Senha de acesso', user: 'Maria Santos', status: 'Aberto', priority: 'media', time: '4h atrás' },
-    { id: 3, title: 'Computador lento', user: 'Pedro Costa', status: 'Aberto', priority: 'baixa', time: '5h atrás' },
-    { id: 4, title: 'Instalação de software', user: 'Ana Lima', status: 'Concluído', priority: 'media', time: '1d atrás' },
-  ];
+  const recentTickets = (chamados ?? []).slice(0, 6).map(c => ({
+    id: c.id,
+    title: c.titulo,
+    user: c.usuario,
+    status: c.status,
+    priority: c.prioridade,
+    time: c.data || '',
+  }))
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -57,6 +49,14 @@ const Dashboard = () => {
       case 'Concluído': return 'secondary';
       default: return 'default';
     }
+  };
+
+  const { user } = useAuth();
+  const hasEmAndamento = (chamados ?? []).some(c => c.status === 'Em Andamento')
+  const teamStatus = {
+    label: 'Equipe de TI',
+    state: hasEmAndamento ? 'Em serviço' : 'Disponível',
+    icon: Wifi,
   };
 
   return (
@@ -81,12 +81,28 @@ const Dashboard = () => {
               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                 <TrendingUp className="h-3 w-3 text-success" />
                 <span className="text-success">{stat.change}</span>
-                <span>vs. mês anterior</span>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Disponibilidade da equipe */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">{teamStatus.label}</CardTitle>
+          <teamStatus.icon className="h-4 w-4 text-success" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-lg font-semibold">{teamStatus.state}</div>
+          {user?.tier === 'vip' && (
+            <div className="mt-2">
+              <Badge variant="default">VIP</Badge>
+              <span className="ml-2 text-sm text-muted-foreground">Atendimento prioritário habilitado</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent Tickets */}
       <Card>

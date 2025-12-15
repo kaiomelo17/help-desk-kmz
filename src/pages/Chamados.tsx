@@ -1,83 +1,150 @@
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Clock } from 'lucide-react';
+import { Plus, Search, Clock, Eye, PencilLine, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listChamados, createChamado, updateChamado, deleteChamado, type Chamado as ChamadoType } from '@/lib/api/chamados';
+import { supabase } from '@/lib/supabase';
+import { listSetores, type Setor as SetorType } from '@/lib/api/setores';
+import { listUsuarios, type Usuario } from '@/lib/api/usuarios';
 
-interface Ticket {
-  id: string;
-  titulo: string;
-  descricao: string;
-  prioridade: 'baixa' | 'media' | 'alta';
-  status: 'Aberto' | 'Em Andamento' | 'Concluído';
-  usuario: string;
-  data: string;
+interface Ticket extends Omit<ChamadoType, 'tipo_servico' | 'is_vip'> {
+  tipoServico: string;
+  isVip?: boolean;
 }
 
 const Chamados = () => {
-  const [chamados, setChamados] = useState<Ticket[]>([
-    {
-      id: '1',
-      titulo: 'Impressora não funciona',
-      descricao: 'A impressora do 2º andar não está respondendo',
-      prioridade: 'alta',
-      status: 'Em Andamento',
-      usuario: 'João Silva',
-      data: '2024-01-15',
+  const queryClient = useQueryClient()
+  const supabaseEnabled = (import.meta.env.VITE_ENABLE_SUPABASE ?? '1') !== '0' && !!supabase
+  const { data: chamadosData } = useQuery({
+    queryKey: ['chamados'],
+    queryFn: async () => {
+      const rows = await listChamados()
+      return rows.map(r => ({
+        ...r,
+        tipoServico: r.tipo_servico,
+        isVip: r.is_vip,
+      })) as Ticket[]
     },
-    {
-      id: '2',
-      titulo: 'Resetar senha',
-      descricao: 'Preciso resetar minha senha do sistema',
-      prioridade: 'media',
-      status: 'Aberto',
-      usuario: 'Maria Santos',
-      data: '2024-01-15',
-    },
-  ]);
+    staleTime: 1000 * 30,
+  })
+  const { data: setoresData } = useQuery({
+    queryKey: ['setores'],
+    queryFn: async () => await listSetores(),
+    staleTime: 1000 * 60,
+  })
+  const { data: usuariosData } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: async () => await listUsuarios(),
+    staleTime: 1000 * 60,
+  })
+  const chamados = (chamadosData ?? []) as Ticket[]
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
-    prioridade: 'media' as Ticket['prioridade'],
+    solicitante: '',
+    setor: '',
+    tipoServico: '',
   });
 
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin'
+  const setoresList = (setoresData ?? []).map((s: SetorType) => ({ id: s.id, nome: s.nome }))
+  const solicitantesList = (usuariosData ?? []).map((u: Usuario) => ({ id: u.id, nome: u.name || u.username }))
+
+  const createMut = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        usuario: user?.name || 'Usuário Atual',
+        solicitante: formData.solicitante,
+        setor: formData.setor,
+        tipo_servico: formData.tipoServico,
+        is_vip: user?.tier === 'vip',
+        status: 'Aberto' as const,
+        data: new Date().toISOString().split('T')[0],
+      }
+      return await createChamado(payload as any)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] })
+      setFormData({ titulo: '', descricao: '', solicitante: '', setor: '', tipoServico: '' })
+      setDialogOpen(false)
+      toast.success(user?.tier === 'vip' ? 'Chamado VIP aberto e priorizado!' : 'Chamado aberto com sucesso!')
+    },
+    onError: () => toast.error('Falha ao abrir chamado')
+  })
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newTicket: Ticket = {
-      id: Date.now().toString(),
-      ...formData,
-      status: 'Aberto',
-      usuario: 'Usuário Atual',
-      data: new Date().toISOString().split('T')[0],
-    };
-    setChamados([newTicket, ...chamados]);
-    setFormData({ titulo: '', descricao: '', prioridade: 'media' });
-    setDialogOpen(false);
-    toast.success('Chamado aberto com sucesso!');
+    e.preventDefault()
+    createMut.mutate()
+  }
+
+  const updateMut = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: Partial<ChamadoType> }) => {
+      return await updateChamado(id, input)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] })
+      toast.success('Status atualizado!')
+    },
+    onError: () => toast.error('Falha ao atualizar chamado')
+  })
+  const updateStatus = (id: string, newStatus: Ticket['status']) => {
+    updateMut.mutate({ id, input: { status: newStatus } as any })
+  }
+
+  const handleView = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setViewOpen(true);
   };
 
-  const updateStatus = (id: string, newStatus: Ticket['status']) => {
-    setChamados(chamados.map(c => c.id === id ? { ...c, status: newStatus } : c));
-    toast.success('Status atualizado!');
+  const handleEdit = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setFormData({ titulo: ticket.titulo, descricao: ticket.descricao, solicitante: ticket.solicitante, setor: ticket.setor, tipoServico: ticket.tipoServico });
+    setEditOpen(true);
   };
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      return await deleteChamado(id)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['chamados'] })
+      toast.success('Chamado excluído')
+    },
+    onError: () => toast.error('Falha ao excluir chamado')
+  })
+  const handleDelete = (id: string) => {
+    deleteMut.mutate(id)
+  }
 
   const filteredTickets = chamados.filter(ticket => {
+    if (ticket.status === 'Concluído') return false
     const matchesSearch = ticket.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+                         ticket.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.solicitante.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+  const orderedTickets = [...filteredTickets].sort((a, b) => (b.isVip ? 1 : 0) - (a.isVip ? 1 : 0));
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -126,6 +193,46 @@ const Chamados = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="solicitante">Solicitante</Label>
+                <Select value={formData.solicitante} onValueChange={(value) => setFormData({ ...formData, solicitante: value })}>
+                  <SelectTrigger id="solicitante">
+                    <SelectValue placeholder="Selecione o solicitante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {solicitantesList.map((opt) => (
+                      <SelectItem key={opt.id} value={opt.nome}>{opt.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="setor">Setor</Label>
+                <Select value={formData.setor} onValueChange={(value) => setFormData({ ...formData, setor: value })}>
+                  <SelectTrigger id="setor">
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {setoresList.map((s) => (
+                      <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tipo">Tipo de Serviço</Label>
+                <Select value={formData.tipoServico} onValueChange={(value) => setFormData({ ...formData, tipoServico: value })}>
+                  <SelectTrigger id="tipo">
+                    <SelectValue placeholder="Selecione o tipo de serviço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Suporte Técnico">Suporte Técnico</SelectItem>
+                    <SelectItem value="Manutenção de Software">Manutenção de Software</SelectItem>
+                    <SelectItem value="Instabilidade na Rede">Instabilidade na Rede</SelectItem>
+                    <SelectItem value="Equipamentos">Equipamentos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="descricao">Descrição</Label>
                 <Textarea
                   id="descricao"
@@ -134,19 +241,6 @@ const Chamados = () => {
                   rows={4}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="prioridade">Prioridade</Label>
-                <Select value={formData.prioridade} onValueChange={(value: Ticket['prioridade']) => setFormData({ ...formData, prioridade: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="baixa">Baixa</SelectItem>
-                    <SelectItem value="media">Média</SelectItem>
-                    <SelectItem value="alta">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <Button type="submit" className="w-full">Abrir Chamado</Button>
             </form>
@@ -172,63 +266,132 @@ const Chamados = () => {
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="Aberto">Aberto</SelectItem>
             <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-            <SelectItem value="Concluído">Concluído</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-4">
-        {filteredTickets.map((ticket) => (
-          <Card key={ticket.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{ticket.titulo}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{ticket.descricao}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant={getPriorityColor(ticket.prioridade)}>
-                    {ticket.prioridade}
-                  </Badge>
-                  <Badge variant={getStatusColor(ticket.status)}>
-                    {ticket.status}
-                  </Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>Por: {ticket.usuario}</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {ticket.data}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  {ticket.status !== 'Em Andamento' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateStatus(ticket.id, 'Em Andamento')}
-                    >
-                      Em Andamento
-                    </Button>
-                  )}
-                  {ticket.status !== 'Concluído' && (
-                    <Button
-                      size="sm"
-                      onClick={() => updateStatus(ticket.id, 'Concluído')}
-                    >
-                      Concluir
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Título</TableHead>
+                <TableHead>Prioridade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Solicitante</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orderedTickets.map((ticket) => (
+                <TableRow key={ticket.id}>
+                  <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
+                  <TableCell className="flex items-center gap-2">
+                    <Badge variant={getPriorityColor(ticket.prioridade)}>{ticket.prioridade}</Badge>
+                    {ticket.isVip && <Badge variant="default">VIP</Badge>}
+                  </TableCell>
+                  <TableCell><Badge variant={getStatusColor(ticket.status)}>{ticket.status}</Badge></TableCell>
+                  <TableCell>{ticket.solicitante}</TableCell>
+                  <TableCell className="flex items-center gap-1"><Clock className="h-3 w-3" />{ticket.data}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="icon" variant="outline" aria-label="Visualizar" onClick={() => handleView(ticket)}>
+                        <Eye />
+                      </Button>
+                      {isAdmin && (
+                        <>
+                          <Button size="icon" variant="secondary" aria-label="Editar" onClick={() => handleEdit(ticket)}>
+                            <PencilLine />
+                          </Button>
+                          <Button size="icon" variant="destructive" aria-label="Excluir" onClick={() => handleDelete(ticket.id)}>
+                            <Trash2 />
+                          </Button>
+                          {ticket.status !== 'Em Andamento' && (
+                            <Button size="sm" variant="outline" onClick={() => updateStatus(ticket.id, 'Em Andamento')}>Em Andamento</Button>
+                          )}
+                          {ticket.status !== 'Concluído' && (
+                            <Button size="sm" onClick={() => updateStatus(ticket.id, 'Concluído')}>Concluir</Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalhes do Chamado</DialogTitle>
+          </DialogHeader>
+          {selectedTicket && (
+            <div className="space-y-2 text-sm">
+              <div>Título: {selectedTicket.titulo}</div>
+              <div>Descrição: {selectedTicket.descricao}</div>
+              <div>Solicitante: {selectedTicket.solicitante}</div>
+              <div>Setor: {selectedTicket.setor}</div>
+              <div>Tipo de Serviço: {selectedTicket.tipoServico}</div>
+              <div>Prioridade: {selectedTicket.prioridade}</div>
+              <div>Status: {selectedTicket.status}</div>
+              <div>Usuário: {selectedTicket.usuario}</div>
+              <div>Data: {selectedTicket.data}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Chamado</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!selectedTicket) return;
+              updateMut.mutate({
+                id: selectedTicket.id,
+                input: {
+                  titulo: formData.titulo,
+                  descricao: formData.descricao,
+                  solicitante: formData.solicitante,
+                  setor: formData.setor,
+                  tipo_servico: formData.tipoServico,
+                } as any
+              })
+              setEditOpen(false);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="edit-titulo">Título</Label>
+              <Input id="edit-titulo" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-descricao">Descrição</Label>
+              <Textarea id="edit-descricao" rows={4} value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-solicitante">Solicitante</Label>
+              <Input id="edit-solicitante" value={formData.solicitante} onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-setor">Setor</Label>
+              <Input id="edit-setor" value={formData.setor} onChange={(e) => setFormData({ ...formData, setor: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-tipo">Tipo de Serviço</Label>
+              <Input id="edit-tipo" value={formData.tipoServico} onChange={(e) => setFormData({ ...formData, tipoServico: e.target.value })} />
+            </div>
+            <Button type="submit" className="w-full">Salvar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

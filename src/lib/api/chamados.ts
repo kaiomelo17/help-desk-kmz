@@ -14,6 +14,8 @@ export type Chamado = {
   tipo_servico: string
   is_vip?: boolean
   data?: string
+  started_at?: string
+  completed_at?: string
   created_at?: string
 }
 

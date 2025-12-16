@@ -152,8 +152,8 @@ const Equipamentos = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="page-header">Equipamentos</h1>
-          <p className="text-muted-foreground">Gerencie os equipamentos da empresa</p>
+          <h1 className="page-header">Gestão de Ativos</h1>
+          <p className="text-muted-foreground">Gerencie os ativos da empresa</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

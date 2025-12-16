@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listUsuarios, createUsuario, updateUsuario, deleteUsuario, type Usuario } from '@/lib/api/usuarios';
-import { listSetores, type Setor as SetorType } from '@/lib/api/setores';
+import { listSetores, createSetor, type Setor as SetorType } from '@/lib/api/setores';
 import { supabase } from '@/lib/supabase';
 
 interface User {
@@ -28,6 +29,7 @@ interface User {
 const Usuarios = () => {
   const queryClient = useQueryClient()
   const supabaseEnabled = (import.meta.env.VITE_ENABLE_SUPABASE ?? '1') !== '0' && !!supabase
+  const navigate = useNavigate()
   const { data: usuariosData } = useQuery({
     queryKey: ['usuarios'],
     queryFn: async () => {
@@ -55,6 +57,7 @@ const Usuarios = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [addSectorOpen, setAddSectorOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -66,6 +69,12 @@ const Usuarios = () => {
     password: '',
     tipo: 'padrao' as User['tipo'],
   });
+  const [newSector, setNewSector] = useState({
+    nome: '',
+    responsavel: '',
+    ramal: '',
+    localizacao: '',
+  })
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -184,16 +193,21 @@ const Usuarios = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="setor">Setor</Label>
-                <Select value={formData.setor} onValueChange={(value) => setFormData({ ...formData, setor: value })}>
-                  <SelectTrigger id="setor">
-                    <SelectValue placeholder="Selecione o setor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {setoresOptions.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={formData.setor} onValueChange={(value) => setFormData({ ...formData, setor: value })}>
+                    <SelectTrigger id="setor">
+                      <SelectValue placeholder="Selecione o setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {setoresOptions.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="icon" variant="outline" aria-label="Adicionar setor" onClick={() => setAddSectorOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cargo">Cargo</Label>
@@ -219,6 +233,55 @@ const Usuarios = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={addSectorOpen} onOpenChange={setAddSectorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cadastrar Setor</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const mut = createSetor({
+                nome: newSector.nome,
+                responsavel: newSector.responsavel,
+                ramal: newSector.ramal,
+                localizacao: newSector.localizacao,
+              })
+              Promise.resolve(mut)
+                .then(async () => {
+                  await queryClient.invalidateQueries({ queryKey: ['setores'] })
+                  setFormData({ ...formData, setor: newSector.nome || formData.setor })
+                  setNewSector({ nome: '', responsavel: '', ramal: '', localizacao: '' })
+                  setAddSectorOpen(false)
+                  toast.success('Setor cadastrado!')
+                })
+                .catch(() => toast.error('Falha ao cadastrar setor'))
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="ns-nome">Nome do Setor</Label>
+              <Input id="ns-nome" value={newSector.nome} onChange={(e) => setNewSector({ ...newSector, nome: e.target.value })} required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ns-resp">Responsável</Label>
+                <Input id="ns-resp" value={newSector.responsavel} onChange={(e) => setNewSector({ ...newSector, responsavel: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ns-ramal">Ramal</Label>
+                <Input id="ns-ramal" value={newSector.ramal} onChange={(e) => setNewSector({ ...newSector, ramal: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ns-local">Localização</Label>
+              <Input id="ns-local" value={newSector.localizacao} onChange={(e) => setNewSector({ ...newSector, localizacao: e.target.value })} />
+            </div>
+            <Button type="submit" className="w-full">Cadastrar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

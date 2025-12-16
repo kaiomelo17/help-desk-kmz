@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSidebar } from './MainLayout'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -23,6 +24,7 @@ import {
   BarChart4,
   Gift,
   LogOut,
+  User,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,8 +33,10 @@ import { LOGO_SRC, LOGO_MINI_SRC } from '@/config/branding';
 const mainMenu = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Chamados', href: '/chamados', icon: Shield },
-  { title: 'Equipamentos', href: '/equipamentos', icon: HardHat },
+  { title: 'Gestão de Ativos', href: '/equipamentos', icon: HardHat },
   { title: 'Relatórios', href: '/relatorios', icon: BarChart3 },
+  { title: 'Análise de Equipamentos', href: '/dashboard/equipamentos', icon: HardHat },
+  { title: 'Análise de Serviços', href: '/dashboard/servicos', icon: TrendingUp },
 ]
 
 const cadastros = [
@@ -80,7 +84,7 @@ const Sidebar = () => {
         {(() => {
           if (user?.role === 'admin') return mainMenu
           const isVip = user?.tier === 'vip'
-          return mainMenu.filter(m => isVip ? ['/dashboard','/chamados'].includes(m.href) : m.href === '/chamados')
+          return mainMenu.filter(m => isVip ? ['/dashboard','/chamados','/dashboard/equipamentos','/dashboard/servicos'].includes(m.href) : m.href === '/chamados')
         })().map((item) => (
           <Link to={item.href} key={item.href}>
             <Button variant="sidebar" className={cn('transition-all duration-300', isActive(item.href) && 'bg-primary-hover')}>
@@ -130,7 +134,12 @@ const Sidebar = () => {
 
       </nav>
 
-      <div className="p-4 border-t border-primary-hover">
+      <div className="p-4 space-y-2">
+        <div className={cn('flex items-center rounded-md p-2 text-sm text-primary-foreground', !isCollapsed ? 'gap-2' : '')}>
+          <User className={cn('h-5 w-5', !isCollapsed && 'mr-2')} />
+          {!isCollapsed && <span>{user?.name || user?.email || 'Usuário'}</span>}
+        </div>
+        <Separator className="bg-primary-hover" />
         <Button
           variant="sidebar"
           onClick={() => { logout(); navigate('/') }}

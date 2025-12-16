@@ -46,24 +46,60 @@ const Relatorios = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-header">Relatórios</h1>
-        <p className="text-muted-foreground">Visualize estatísticas e relatórios do sistema</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-header">Relatórios</h1>
+          <p className="text-muted-foreground">Visualize estatísticas e relatórios do sistema</p>
+        </div>
+        <div className="flex items-center">
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="diario">Diário</SelectItem>
+              <SelectItem value="semanal">Semanal</SelectItem>
+              <SelectItem value="mensal">Mensal</SelectItem>
+              <SelectItem value="anual">Anual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <Select value={periodo} onValueChange={setPeriodo}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="diario">Diário</SelectItem>
-            <SelectItem value="semanal">Semanal</SelectItem>
-            <SelectItem value="mensal">Mensal</SelectItem>
-            <SelectItem value="anual">Anual</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Estatísticas Gerais
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="stat-card">
+              <p className="text-sm text-muted-foreground">Tempo Médio de Atendimento</p>
+              <p className="text-2xl font-bold mt-2">-</p>
+            </div>
+            <div className="stat-card">
+              <p className="text-sm text-muted-foreground">Taxa de Resolução</p>
+              <p className="text-2xl font-bold mt-2">
+                {(() => {
+                  const total = (chamados?.length ?? 0) || 1
+                  const resolved = (chPrior.resolvidos || 0)
+                  return `${Math.round((resolved / total) * 100)}%`
+                })()}
+              </p>
+            </div>
+            <div className="stat-card">
+              <p className="text-sm text-muted-foreground">Satisfação do Usuário</p>
+              <p className="text-2xl font-bold mt-2">-</p>
+            </div>
+            <div className="stat-card">
+              <p className="text-sm text-muted-foreground">Chamados Resolvidos</p>
+              <p className="text-2xl font-bold mt-2">{chPrior.resolvidos}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -155,40 +191,7 @@ const Relatorios = () => {
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Estatísticas Gerais
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="stat-card">
-                <p className="text-sm text-muted-foreground">Tempo Médio de Atendimento</p>
-                <p className="text-2xl font-bold mt-2">-</p>
-              </div>
-              <div className="stat-card">
-                <p className="text-sm text-muted-foreground">Taxa de Resolução</p>
-                <p className="text-2xl font-bold mt-2">
-                  {(() => {
-                    const total = (chamados?.length ?? 0) || 1
-                    const resolved = (chPrior.resolvidos || 0)
-                    return `${Math.round((resolved / total) * 100)}%`
-                  })()}
-                </p>
-              </div>
-              <div className="stat-card">
-                <p className="text-sm text-muted-foreground">Satisfação do Usuário</p>
-                <p className="text-2xl font-bold mt-2">-</p>
-              </div>
-              <div className="stat-card">
-                <p className="text-sm text-muted-foreground">Chamados Resolvidos</p>
-                <p className="text-2xl font-bold mt-2">{chPrior.resolvidos}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>
 
       <Card>

@@ -28,7 +28,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Computer, label: 'Equipamentos', path: '/equipamentos' },
+    { icon: Computer, label: 'Gestão de Ativos', path: '/equipamentos' },
     { icon: HeadphonesIcon, label: 'Chamados', path: '/chamados' },
     { icon: Users, label: 'Usuários', path: '/usuarios' },
     { icon: Package, label: 'Produtos', path: '/produtos' },

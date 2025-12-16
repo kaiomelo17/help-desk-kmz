@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import MainLayout from "./components/Layout/MainLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import AnaliseEquipamentos from "./pages/AnaliseEquipamentos";
+import AnaliseServicos from "./pages/AnaliseServicos";
 import Equipamentos from "./pages/Equipamentos";
 import Chamados from "./pages/Chamados";
 import Usuarios from "./pages/Usuarios";
@@ -28,7 +30,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = user?.role === 'admin'
   const isVip = user?.tier === 'vip' && !isAdmin
   if (!isAdmin) {
-    const allowed = isVip ? ['/dashboard', '/chamados'] : ['/chamados']
+    const allowed = isVip ? ['/dashboard', '/chamados', '/dashboard/equipamentos', '/dashboard/servicos'] : ['/chamados']
     if (!allowed.includes(path)) {
       return <Navigate to="/chamados" />
     }
@@ -60,8 +62,6 @@ const App = () => {
         const { error } = await supabase.from("produtos").select("id").limit(1)
         if (error) {
           toast.error("Conectado, mas schema não visível na API. Aplique supabase/schema.sql e resete o API cache.");
-        } else {
-          toast.success("Conectado ao Supabase");
         }
       } catch {
         toast.error("Conexão Supabase indisponível");
@@ -79,6 +79,8 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Login />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/equipamentos" element={<ProtectedRoute><AnaliseEquipamentos /></ProtectedRoute>} />
+              <Route path="/dashboard/servicos" element={<ProtectedRoute><AnaliseServicos /></ProtectedRoute>} />
               <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
               <Route path="/chamados" element={<ProtectedRoute><Chamados /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />

@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listChamados, createChamado, updateChamado, deleteChamado, type Chamado as ChamadoType } from '@/lib/api/chamados';
 import { supabase } from '@/lib/supabase';
 import { listSetores, type Setor as SetorType } from '@/lib/api/setores';
-import { listUsuarios, type Usuario } from '@/lib/api/usuarios';
+import { listUsuarios, createUsuario, type Usuario } from '@/lib/api/usuarios';
 
 interface Ticket extends Omit<ChamadoType, 'tipo_servico' | 'is_vip'> {
   tipoServico: string;
@@ -52,6 +52,7 @@ const Chamados = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [addUserOpen, setAddUserOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -68,6 +69,15 @@ const Chamados = () => {
   const isAdmin = user?.role === 'admin'
   const setoresList = (setoresData ?? []).map((s: SetorType) => ({ id: s.id, nome: s.nome }))
   const solicitantesList = (usuariosData ?? []).map((u: Usuario) => ({ id: u.id, nome: u.name || u.username }))
+
+  const [newUser, setNewUser] = useState({
+    nome: '',
+    username: '',
+    setor: '',
+    cargo: '',
+    password: '',
+    tipo: 'padrao' as 'padrao' | 'vip' | 'admin',
+  })
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -194,29 +204,32 @@ const Chamados = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="solicitante">Solicitante</Label>
-                <Select value={formData.solicitante} onValueChange={(value) => setFormData({ ...formData, solicitante: value })}>
-                  <SelectTrigger id="solicitante">
-                    <SelectValue placeholder="Selecione o solicitante" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {solicitantesList.map((opt) => (
-                      <SelectItem key={opt.id} value={opt.nome}>{opt.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={formData.solicitante} onValueChange={(value) => {
+                    const user = (usuariosData ?? []).find((u: Usuario) => (u.name || u.username) === value)
+                    setFormData({
+                      ...formData,
+                      solicitante: value,
+                      setor: user?.setor || ''
+                    })
+                  }}>
+                    <SelectTrigger id="solicitante">
+                      <SelectValue placeholder="Selecione o solicitante" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {solicitantesList.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.nome}>{opt.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="icon" variant="outline" aria-label="Adicionar usuário" onClick={() => setAddUserOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="setor">Setor</Label>
-                <Select value={formData.setor} onValueChange={(value) => setFormData({ ...formData, setor: value })}>
-                  <SelectTrigger id="setor">
-                    <SelectValue placeholder="Selecione o setor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {setoresList.map((s) => (
-                      <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input id="setor" value={formData.setor} disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de Serviço</Label>
@@ -247,6 +260,85 @@ const Chamados = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cadastrar Usuário</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const mut = createUsuario({
+                nome: newUser.nome,
+                username: newUser.username,
+                setor: newUser.setor,
+                cargo: newUser.cargo,
+                password: newUser.password,
+                tipo: newUser.tipo,
+              })
+              Promise.resolve(mut)
+                .then(async (u) => {
+                  await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+                  setFormData({ ...formData, solicitante: newUser.nome || newUser.username, setor: newUser.setor || formData.setor })
+                  setNewUser({ nome: '', username: '', setor: '', cargo: '', password: '', tipo: 'padrao' })
+                  setAddUserOpen(false)
+                  toast.success('Usuário cadastrado!')
+                })
+                .catch(() => toast.error('Falha ao cadastrar usuário'))
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="nu-nome">Nome Completo</Label>
+              <Input id="nu-nome" value={newUser.nome} onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })} required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nu-username">Usuário</Label>
+                <Input id="nu-username" value={newUser.username} onChange={(e) => setNewUser({ ...newUser, username: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nu-tipo">Tipo</Label>
+                <Select value={newUser.tipo} onValueChange={(v: 'padrao' | 'vip' | 'admin') => setNewUser({ ...newUser, tipo: v })}>
+                  <SelectTrigger id="nu-tipo">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="padrao">Padrão</SelectItem>
+                    <SelectItem value="vip">VIP</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nu-setor">Setor</Label>
+                <Select value={newUser.setor} onValueChange={(value) => setNewUser({ ...newUser, setor: value })}>
+                  <SelectTrigger id="nu-setor">
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {setoresList.map((s) => (
+                      <SelectItem key={s.id} value={s.nome}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nu-cargo">Cargo</Label>
+                <Input id="nu-cargo" value={newUser.cargo} onChange={(e) => setNewUser({ ...newUser, cargo: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nu-password">Senha</Label>
+              <Input id="nu-password" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required />
+            </div>
+            <Button type="submit" className="w-full">Cadastrar</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1">

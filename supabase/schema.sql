@@ -79,8 +79,19 @@ create table if not exists public.chamados (
   tipo_servico text not null,
   is_vip boolean not null default false,
   data date not null default (now()::date),
+  started_at timestamptz,
+  completed_at timestamptz,
+  solution_duration_min integer,
+  tempo_solucao_minutos integer,
+  tempo_solucao_texto text,
   created_at timestamptz default now()
 );
+
+ALTER TABLE public.chamados ADD COLUMN IF NOT EXISTS started_at timestamptz;
+ALTER TABLE public.chamados ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.chamados ADD COLUMN IF NOT EXISTS solution_duration_min integer;
+ALTER TABLE public.chamados ADD COLUMN IF NOT EXISTS tempo_solucao_minutos integer;
+ALTER TABLE public.chamados ADD COLUMN IF NOT EXISTS tempo_solucao_texto text;
 
 create or replace function public.chamados_set_priority() returns trigger language plpgsql as $$
 begin
@@ -108,3 +119,7 @@ create index if not exists idx_produto_saidas_produto_data on public.produto_sai
 create index if not exists idx_chamados_status on public.chamados(status);
 create index if not exists idx_chamados_prioridade on public.chamados(prioridade);
 create index if not exists idx_chamados_data on public.chamados(data);
+create index if not exists idx_chamados_started_at on public.chamados(started_at);
+create index if not exists idx_chamados_completed_at on public.chamados(completed_at);
+create index if not exists idx_chamados_solution_duration on public.chamados(solution_duration_min);
+create index if not exists idx_chamados_tempo_solucao_minutos on public.chamados(tempo_solucao_minutos);

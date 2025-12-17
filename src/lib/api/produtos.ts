@@ -161,9 +161,13 @@ export async function registrarSaida(produto_id: string, quantidade: number, des
 
 export async function listSaidas(): Promise<ProdutoSaida[]> {
   if (useRest) {
-    const r = await fetch(`${apiUrl}/produto_saidas`)
-    if (!r.ok) throw new Error('API local indisponível')
-    return await r.json()
+    try {
+      const r = await fetch(`${apiUrl}/produto_saidas`)
+      if (!r.ok) return []
+      return await r.json()
+    } catch {
+      return []
+    }
   }
   try {
     const { data: rows, error } = await supabase
@@ -171,16 +175,9 @@ export async function listSaidas(): Promise<ProdutoSaida[]> {
       .select('*')
       .order('data', { ascending: false })
     if (error) throw error
-    const data = rows ?? []
-    if (!data.length) {
-      const r = await fetch(`${apiUrl}/produto_saidas`)
-      if (r.ok) return await r.json()
-    }
-    return data as ProdutoSaida[]
+    return (rows ?? []) as ProdutoSaida[]
   } catch {
-    const r = await fetch(`${apiUrl}/produto_saidas`)
-    if (!r.ok) throw new Error('API local indisponível')
-    return await r.json()
+    return []
   }
 }
 

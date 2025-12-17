@@ -48,7 +48,7 @@ const cadastros = [
 const Sidebar = () => {
   const { isCollapsed, toggle } = useSidebar()
   const { pathname } = useLocation()
-  const { logout, user } = useAuth() as any
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
   const [cadastrosOpen, setCadastrosOpen] = useState(false)
   const isActive = (href: string) => pathname.startsWith(href)

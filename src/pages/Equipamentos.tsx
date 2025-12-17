@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,8 +14,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listEquipamentos, createEquipamento, updateEquipamento, deleteEquipamento, type Equipamento as EquipamentoType } from '@/lib/api/equipamentos';
 import { listSetores, type Setor as SetorType } from '@/lib/api/setores';
 import { supabase } from '@/lib/supabase';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
-interface Equipment extends EquipamentoType {}
+type Equipment = EquipamentoType;
 
 const Equipamentos = () => {
   const queryClient = useQueryClient()
@@ -28,7 +30,7 @@ const Equipamentos = () => {
     },
     staleTime: 1000 * 30,
   })
-  const equipamentos = (equipamentosData ?? []) as Equipment[]
+  const equipamentos = useMemo(() => (equipamentosData ?? []) as Equipment[], [equipamentosData])
   const { data: setoresData } = useQuery({
     queryKey: ['setores'],
     queryFn: async () => await listSetores(),
@@ -37,6 +39,7 @@ const Equipamentos = () => {
   const setoresOptions = (setoresData ?? []).map((s: SetorType) => s.nome)
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [prefixFilter, setPrefixFilter] = useState<'all' | 'JV' | 'PC' | 'TAB' | 'CEL' | 'IMP' | 'MON'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
@@ -64,7 +67,7 @@ const Equipamentos = () => {
       return await createEquipamento({ ...formData })
     },
     onSuccess: async (created) => {
-      queryClient.setQueryData(['equipamentos'], (prev: any) => {
+      queryClient.setQueryData(['equipamentos'], (prev: EquipamentoType[] | undefined) => {
         const arr = Array.isArray(prev) ? prev : []
         return [created, ...arr]
       })
@@ -73,7 +76,10 @@ const Equipamentos = () => {
       setDialogOpen(false)
       toast.success('Equipamento cadastrado com sucesso!')
     },
-    onError: (err: any) => toast.error(typeof err?.message === 'string' ? err.message : 'Falha ao cadastrar equipamento')
+    onError: (err: unknown) => {
+      const msg = typeof (err as { message?: unknown })?.message === 'string' ? (err as { message: string }).message : 'Falha ao cadastrar equipamento'
+      toast.error(msg)
+    }
   })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,13 +96,95 @@ const Equipamentos = () => {
       toast.error('Número de patrimônio já cadastrado')
       return
     }
+    const parsed = parseCode(formData.patrimonio)
+    if (parsed) {
+      const hasSame = equipamentos.some(e => {
+        const p = parseCode(e.patrimonio)
+        return p && p.prefix === parsed.prefix && p.num === parsed.num
+      })
+      if (hasSame) {
+        toast.error('Código já existente para este prefixo')
+        return
+      }
+    }
     createMut.mutate()
   }
 
-  const filteredEquipments = equipamentos.filter(eq =>
-    eq.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    eq.patrimonio.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getPrefix = useCallback((tipo: string) => {
+    if (['Desktop', 'Notebook'].includes(tipo)) return 'PC'
+    if (tipo === 'Tablet') return 'TAB'
+    if (tipo === 'Smartphone') return 'CEL'
+    if (tipo === 'Impressora') return 'IMP'
+    if (tipo === 'Monitor') return 'MON'
+    return '-'
+  }, [])
+  const isJVName = useCallback((nome: string) => /^\s*jovem\s+aprendiz\s+\d{1,2}\s*$/i.test(nome || ''), [])
+  const getPrefixByEquipment = useCallback((e: Equipment) => (isJVName(e.nome) ? 'JV' : getPrefix(e.tipo)), [isJVName, getPrefix])
+  const parseCode = useCallback((pat: string) => {
+    const m = (pat || '').match(/^(JV|PC|TAB|CEL|IMP|MON)-?(\d{3})$/i)
+    if (!m) return null
+    return { prefix: m[1].toUpperCase() as 'JV' | 'PC' | 'TAB' | 'CEL' | 'IMP' | 'MON', num: Number(m[2]) }
+  }, [])
+  const filteredEquipments = useMemo(() => {
+    const term = searchTerm.toLowerCase()
+    let rows = equipamentos.filter(eq =>
+      eq.nome.toLowerCase().includes(term) ||
+      eq.patrimonio.toLowerCase().includes(term)
+    )
+    if (prefixFilter !== 'all') {
+      rows = rows.filter(e => getPrefixByEquipment(e) === prefixFilter)
+    }
+    const rank: Record<string, number> = { JV: 0, PC: 1, TAB: 2, CEL: 3, IMP: 4, MON: 5, '-': 6 }
+    return rows.sort((a, b) => {
+      const pa = getPrefixByEquipment(a)
+      const pb = getPrefixByEquipment(b)
+      if (rank[pa] !== rank[pb]) return rank[pa] - rank[pb]
+      const ca = parseCode(a.patrimonio)?.num ?? 9999
+      const cb = parseCode(b.patrimonio)?.num ?? 9999
+      if (ca !== cb) return ca - cb
+      return a.nome.localeCompare(b.nome)
+    })
+  }, [equipamentos, searchTerm, prefixFilter, getPrefixByEquipment, parseCode])
+
+  const orderMap = useMemo(() => {
+    const map = new Map<string, string>()
+    const assignList = (list: Equipment[], prefix: 'JV' | 'PC' | 'TAB' | 'CEL' | 'IMP' | 'MON') => {
+      const withCodes = list.map(e => ({ e, code: parseCode(e.patrimonio)?.num ?? null }))
+      const max = withCodes.reduce((m, r) => r.code ? Math.max(m, r.code) : m, 0)
+      let next = max + 1
+      const sorted = [...list].sort((a, b) => (a.nome ?? '').localeCompare(b.nome ?? ''))
+      sorted.forEach((e) => {
+        const parsed = parseCode(e.patrimonio)
+        if (parsed && parsed.prefix === prefix) {
+          map.set(e.id, `${prefix}${prefix === 'PC' ? '' : '-'}${String(parsed.num).padStart(3, '0')}`)
+        } else {
+          map.set(e.id, `${prefix}${prefix === 'PC' ? '' : '-'}${String(next).padStart(3, '0')}`)
+          next++
+        }
+      })
+    }
+    const jvList = [...filteredEquipments].filter(e => isJVName(e.nome))
+    assignList(jvList, 'JV')
+    const pcList = [...filteredEquipments].filter(e => ['Notebook','Desktop'].includes(e.tipo) && !isJVName(e.nome))
+    assignList(pcList, 'PC')
+    assignList(filteredEquipments.filter(e => e.tipo === 'Tablet'), 'TAB')
+    assignList(filteredEquipments.filter(e => e.tipo === 'Smartphone'), 'CEL')
+    assignList(filteredEquipments.filter(e => e.tipo === 'Impressora'), 'IMP')
+    assignList(filteredEquipments.filter(e => e.tipo === 'Monitor'), 'MON')
+    return map
+  }, [filteredEquipments, parseCode, isJVName])
+
+  const nextCode = useMemo(() => {
+    const p = isJVName(formData.nome) ? 'JV' : getPrefix(formData.tipo)
+    if (p === '-') return ''
+    const nums = equipamentos
+      .filter(e => getPrefixByEquipment(e) === p)
+      .map(e => parseCode(e.patrimonio)?.num)
+      .filter((n): n is number => typeof n === 'number')
+    const max = nums.length ? Math.max(...nums) : 0
+    const num = String(max + 1).padStart(3, '0')
+    return `${p}${p === 'PC' ? '' : '-'}${num}`
+  }, [equipamentos, formData.tipo, formData.nome, getPrefixByEquipment, isJVName, getPrefix, parseCode])
 
   const getStatusColor = (status: Equipment['status']) => {
     switch (status) {
@@ -119,9 +207,177 @@ const Equipamentos = () => {
 
   const handleEdit = (equipment: Equipment) => {
     setSelectedEquipment(equipment);
-    setFormData({ nome: equipment.nome, tipo: equipment.tipo, patrimonio: equipment.patrimonio, status: equipment.status, usuario: equipment.usuario || '', setor: equipment.setor || '' });
+    setFormData({
+      nome: equipment.nome,
+      tipo: equipment.tipo,
+      patrimonio: equipment.patrimonio,
+      marca: equipment.marca || '',
+      modelo: equipment.modelo || '',
+      status: equipment.status,
+      usuario: equipment.usuario || '',
+      setor: equipment.setor || '',
+      ram: equipment.ram || '',
+      armazenamento: equipment.armazenamento || '',
+      processador: equipment.processador || '',
+      polegadas: equipment.polegadas || '',
+      ghz: equipment.ghz || '',
+    });
     setEditOpen(true);
   };
+
+  const handleDownloadPDF = async () => {
+    try {
+      if (!selectedEquipment) {
+        toast.error('Selecione um equipamento para gerar o PDF')
+        return
+      }
+      const target = document.getElementById('termo-responsabilidade') as HTMLElement | null
+      if (!target) {
+        toast.error('Abra o termo antes de gerar o PDF')
+        return
+      }
+      const mmToPx = (mm: number) => (mm * 96) / 25.4
+      const marginMm = 15
+      const pageWidthMm = 210
+      const contentWidthPx = Math.floor(mmToPx(pageWidthMm - marginMm * 2))
+      const wrapper = document.createElement('div')
+      const root = document.createElement('div')
+      wrapper.style.position = 'fixed'
+      wrapper.style.left = '-10000px'
+      wrapper.style.top = '0'
+      root.style.width = `${contentWidthPx}px`
+      root.style.background = '#ffffff'
+      root.style.color = '#000000'
+      root.style.fontSize = '11pt'
+      root.style.lineHeight = '1.4'
+      root.style.padding = '0'
+      root.style.paddingBottom = '8mm'
+      root.style.boxSizing = 'border-box'
+      const header = document.createElement('div')
+      header.style.display = 'flex'
+      header.style.justifyContent = 'center'
+      header.style.alignItems = 'center'
+      header.style.padding = '0'
+      const logo = document.createElement('img')
+      logo.src = LOGO_SRC
+      logo.alt = 'Concrem Portas Premium'
+      logo.style.maxWidth = '120mm'
+      logo.style.height = 'auto'
+      logo.style.display = 'block'
+      header.appendChild(logo)
+      const title = document.createElement('h2')
+      title.textContent = `TERMO DE RESPONSABILIDADE DE ${String(selectedEquipment.tipo || '').toUpperCase() || 'EQUIPAMENTO'}`
+      title.style.textAlign = 'center'
+      title.style.fontSize = '16pt'
+      title.style.fontWeight = '600'
+      title.style.margin = '12mm 0 8mm'
+      const body = document.createElement('div')
+      body.style.fontSize = '11pt'
+      body.style.textAlign = 'justify'
+      body.style.display = 'grid'
+      body.style.gap = '5mm'
+      const pIntro = document.createElement('p')
+      const e = selectedEquipment as Equipment
+      const specs: string[] = []
+      if (['Desktop','Notebook','Smartphone'].includes(e?.tipo)) {
+        if (e?.ram) specs.push(`Memória RAM: ${e.ram}`)
+        if (e?.armazenamento) specs.push(`Armazenamento: ${e.armazenamento}`)
+      }
+      if (['Desktop','Notebook'].includes(e?.tipo)) {
+        if (e?.processador) specs.push(`Processador: ${e.processador}`)
+      }
+      if (e?.tipo === 'Monitor') {
+        if (e?.polegadas) specs.push(`Polegadas: ${e.polegadas}`)
+        if (e?.ghz) specs.push(`GHz: ${e.ghz}`)
+      }
+      const specsText = specs.length ? specs.join(' • ') : '-'
+      pIntro.innerHTML = `CONCREM INDUSTRIAL LTDA, com matriz no endereço Rodovia BR 010, s/n° / KM 31, inscrita no CNPJ sob o n° 18.543.638/0001-34, neste ato, entrega de ${selectedEquipment.tipo} marca: ${e?.marca || '-'} modelo: ${e?.modelo || '-'} ESPECIFICAÇÕES: ${specsText}, ao funcionário ${selectedEquipment.usuario || '-'}, doravante denominado simplesmente "USUÁRIO", sob as seguintes condições:`
+      const list = document.createElement('ol')
+      list.style.listStyle = 'decimal'
+      list.style.paddingLeft = '6mm'
+      list.style.margin = '0'
+      const items = [
+        { title: 'Uso Exclusivo', text: 'O equipamento deverá ser utilizado ÚNICA e EXCLUSIVAMENTE a serviço da empresa, tendo em vista a atividade a ser exercida pelo USUÁRIO.' },
+        { title: 'Responsabilidade', text: 'O USUÁRIO será responsável pelo uso e conservação do equipamento.' },
+        { title: 'Detenção e Propriedade', text: 'O USUÁRIO detém apenas a posse do equipamento para a prestação de serviços profissionais e não a propriedade do mesmo. É terminantemente proibido o empréstimo, aluguel ou cessão deste a terceiros.' },
+        { title: 'Devolução', text: 'Ao término da prestação de serviço ou do contrato individual de trabalho, o USUÁRIO compromete-se a devolver o equipamento em perfeito estado, no mesmo dia em que for comunicado ou comunique seu desligamento, considerando o desgaste natural pelo uso normal do equipamento.' },
+      ]
+      for (const it of items) {
+        const li = document.createElement('li')
+        const strong = document.createElement('strong')
+        strong.textContent = `${it.title}: `
+        li.appendChild(strong)
+        li.append(it.text)
+        li.style.marginBottom = '3mm'
+        list.appendChild(li)
+      }
+      const meta = document.createElement('div')
+      meta.style.display = 'flex'
+      meta.style.justifyContent = 'space-between'
+      meta.style.marginTop = '6mm'
+      meta.style.fontSize = '10.5pt'
+      meta.innerHTML = `<span>Dom Eliseu / ${new Date().toLocaleDateString('pt-BR')}</span><span>Setor: ${selectedEquipment.setor || '-'}</span>`
+      body.appendChild(pIntro)
+      body.appendChild(list)
+      body.appendChild(meta)
+      root.appendChild(header)
+      root.appendChild(title)
+      root.appendChild(body)
+      wrapper.appendChild(root)
+      document.body.appendChild(wrapper)
+      await new Promise((r) => setTimeout(r, 0))
+      const canvas = await html2canvas(root, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      document.body.removeChild(wrapper)
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const contentWidthMm = pageWidth - marginMm * 2
+      const contentHeightMm = contentWidthMm * (canvas.height / canvas.width)
+      const footerReservedMm = 12
+      const signatureReservedMm = 50
+      const availableHeightMm = pageHeight - marginMm * 2 - footerReservedMm - signatureReservedMm
+      let drawWidthMm = contentWidthMm
+      let drawHeightMm = contentHeightMm
+      if (contentHeightMm > availableHeightMm) {
+        const scaleFactor = availableHeightMm / contentHeightMm
+        drawWidthMm = contentWidthMm * scaleFactor
+        drawHeightMm = contentHeightMm * scaleFactor
+      }
+      const x = (pageWidth - drawWidthMm) / 2
+      const contentY = marginMm
+      pdf.addImage(imgData, 'PNG', x, contentY, drawWidthMm, drawHeightMm)
+      const borderColor = { r: 26, g: 73, b: 33 }
+      pdf.setDrawColor(borderColor.r, borderColor.g, borderColor.b)
+      pdf.setLineWidth(0.7)
+      pdf.rect(3, 3, pageWidth - 6, pageHeight - 6)
+      const blankBeforeSignatureMm = 18
+      const signatureY = contentY + drawHeightMm + blankBeforeSignatureMm
+      const blockWidthMm = 70
+      const blockGapMm = 12
+      const totalBlockWidthMm = blockWidthMm * 2 + blockGapMm
+      const startX = (pageWidth - totalBlockWidthMm) / 2
+      pdf.setLineWidth(0.4)
+      pdf.line(startX, signatureY, startX + blockWidthMm, signatureY)
+      pdf.line(startX + blockWidthMm + blockGapMm, signatureY, startX + blockWidthMm * 2 + blockGapMm, signatureY)
+      pdf.setFontSize(11)
+      const labelY = signatureY + 6
+      pdf.text('Assinatura do Responsável', startX + blockWidthMm / 2, labelY, { align: 'center' })
+      pdf.text('CPF do Responsável', startX + blockWidthMm + blockGapMm + blockWidthMm / 2, labelY, { align: 'center' })
+      const nomeCenterY = labelY + 12
+      const nomeText = `Nome: ${selectedEquipment.usuario || '-'}`
+      pdf.text(nomeText, pageWidth / 2, nomeCenterY, { align: 'center' })
+      pdf.setFontSize(9)
+      const footerText = 'Rod. BR-010, Km 31, Interior - Cep 68653-000 Dom Eliseu-PA - Tel: (94) 98114-2020 • CNPJ: 18.543.638/0001-34 • IE: 15.417.865-9'
+      const footerY = pageHeight - marginMm
+      pdf.text(footerText, pageWidth / 2, footerY, { align: 'center' })
+      const filename = `termo-${selectedEquipment?.patrimonio || selectedEquipment?.tipo || 'equipamento'}.pdf`
+      pdf.save(filename)
+      toast.success('PDF gerado com sucesso')
+    } catch (err) {
+      toast.error('Falha ao gerar PDF do termo')
+    }
+  }
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: Partial<Equipment> }) => {
@@ -201,6 +457,19 @@ const Equipamentos = () => {
                   required
                 />
               </div>
+              {formData.tipo && getPrefix(formData.tipo) !== '-' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label>Código sugerido</Label>
+                    <Input value={nextCode} readOnly />
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" variant="outline" className="w-full" onClick={() => setFormData({ ...formData, patrimonio: nextCode })}>
+                      Usar sugestão
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="marca">Marca</Label>
                 <Input id="marca" value={formData.marca} onChange={(e) => setFormData({ ...formData, marca: e.target.value })} />
@@ -300,13 +569,31 @@ const Equipamentos = () => {
             className="pl-10"
           />
         </div>
+        <div className="w-[220px]">
+          <Select value={prefixFilter} onValueChange={(v) => setPrefixFilter(v as 'all' | 'JV' | 'PC' | 'TAB' | 'CEL' | 'IMP' | 'MON')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrar por prefixo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="JV">Jovem Aprendiz (JV)</SelectItem>
+              <SelectItem value="PC">Desktops/Notebooks (PC)</SelectItem>
+              <SelectItem value="TAB">Tablets (TAB)</SelectItem>
+              <SelectItem value="CEL">Smartphones (CEL)</SelectItem>
+              <SelectItem value="IMP">Impressoras (IMP)</SelectItem>
+              <SelectItem value="MON">Monitores (MON)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
+                <TableHead>Ordem</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Patrimônio</TableHead>
@@ -318,7 +605,8 @@ const Equipamentos = () => {
             </TableHeader>
             <TableBody>
               {filteredEquipments.map((equipment) => (
-                <TableRow key={equipment.id}>
+                <TableRow key={equipment.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                  <TableCell className="font-mono">{orderMap.get(equipment.id) ?? '-'}</TableCell>
                   <TableCell>{equipment.nome}</TableCell>
                   <TableCell>{equipment.tipo}</TableCell>
                   <TableCell>{equipment.patrimonio}</TableCell>
@@ -347,6 +635,7 @@ const Equipamentos = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -367,7 +656,7 @@ const Equipamentos = () => {
               <div className="space-y-4 text-sm leading-relaxed">
                 <p>
                   CONCREM INDUSTRIAL LTDA, com matriz no endereço Rodovia BR 010, s/n° / KM 31, inscrita no CNPJ sob o n° 18.543.638/0001-34, neste ato, entrega de {selectedEquipment.tipo} marca: {selectedEquipment.marca || '-'} modelo: {selectedEquipment.modelo || '-'} ESPECIFICAÇÕES: {(() => {
-                    const e = selectedEquipment as any
+                    const e = selectedEquipment as Equipment
                     const arr: string[] = []
                     if (['Desktop','Notebook','Smartphone'].includes(e.tipo)) {
                       if (e.ram) arr.push(`Memória RAM: ${e.ram}`)
@@ -413,7 +702,7 @@ const Equipamentos = () => {
             </div>
           )}
           <div className="flex gap-2">
-            <Button onClick={() => window.print()} className="flex-1">
+            <Button onClick={handleDownloadPDF} className="flex-1">
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>

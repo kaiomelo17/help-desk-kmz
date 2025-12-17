@@ -67,6 +67,14 @@ All colors MUST be HSL.
   .stat-card {
     @apply bg-card rounded-lg p-6 shadow-sm border border-border hover:shadow-md transition-shadow;
   }
+
+  .scrollbar-hidden {
+    scrollbar-width: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
   
   .page-header {
     @apply text-3xl font-bold text-foreground mb-6;
@@ -75,13 +83,12 @@ All colors MUST be HSL.
   .section-title {
     @apply text-xl font-semibold text-foreground mb-4;
   }
-}
 
 /* Print styles for A4 PDF of the Responsibility Term */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 20mm;
+    margin: 15mm;
   }
 
   html, body {
@@ -101,11 +108,14 @@ All colors MUST be HSL.
   /* Make sure the term lays out cleanly on one A4 page */
   #termo-responsabilidade {
     position: static !important;
-    width: auto;
-    max-width: 170mm;
+    width: 100%;
+    max-width: 180mm;
     margin: 0 auto;
     background: #ffffff !important;
     border-color: #d1d5db !important; /* gray-300 */
+    font-size: 11pt;
+    line-height: 1.4;
+    page-break-inside: avoid;
   }
 
   /* Ensure the logo is visible at the header */

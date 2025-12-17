@@ -20,7 +20,6 @@ interface User {
   nome: string;
   username: string;
   setor: string;
-  cargo: string;
   password: string;
   tipo: 'vip' | 'padrao' | 'admin';
   isAdmin?: boolean;
@@ -39,7 +38,6 @@ const Usuarios = () => {
         nome: r.name || '',
         username: r.username || '',
         setor: r.setor || '',
-        cargo: r.cargo || '',
         password: '',
         tipo: r.tier || 'padrao',
         isAdmin: r.is_admin === 1 || r.tier === 'admin'
@@ -65,16 +63,10 @@ const Usuarios = () => {
     nome: '',
     username: '',
     setor: '',
-    cargo: '',
     password: '',
     tipo: 'padrao' as User['tipo'],
   });
-  const [newSector, setNewSector] = useState({
-    nome: '',
-    responsavel: '',
-    ramal: '',
-    localizacao: '',
-  })
+  const [newSector, setNewSector] = useState({ nome: '' })
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -105,19 +97,17 @@ const Usuarios = () => {
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);
-    setFormData({ nome: user.nome, username: user.username, setor: user.setor, cargo: user.cargo, password: '', tipo: user.tipo });
+    setFormData({ nome: user.nome, username: user.username, setor: user.setor, password: '', tipo: user.tipo });
     setEditOpen(true);
   };
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: Partial<User> }) => {
-      const payload: any = { ...input }
       return await updateUsuario(id, {
-        nome: payload.nome,
-        username: payload.username,
-        setor: payload.setor,
-        cargo: payload.cargo,
-        password: payload.password,
+        nome: input.nome,
+        username: input.username,
+        setor: input.setor,
+        password: input.password,
       })
     },
     onSuccess: async () => {
@@ -210,15 +200,6 @@ const Usuarios = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cargo">Cargo</Label>
-                <Input
-                  id="cargo"
-                  value={formData.cargo}
-                  onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
@@ -244,15 +225,12 @@ const Usuarios = () => {
               e.preventDefault()
               const mut = createSetor({
                 nome: newSector.nome,
-                responsavel: newSector.responsavel,
-                ramal: newSector.ramal,
-                localizacao: newSector.localizacao,
               })
               Promise.resolve(mut)
                 .then(async () => {
                   await queryClient.invalidateQueries({ queryKey: ['setores'] })
                   setFormData({ ...formData, setor: newSector.nome || formData.setor })
-                  setNewSector({ nome: '', responsavel: '', ramal: '', localizacao: '' })
+                  setNewSector({ nome: '' })
                   setAddSectorOpen(false)
                   toast.success('Setor cadastrado!')
                 })
@@ -263,20 +241,6 @@ const Usuarios = () => {
             <div className="space-y-2">
               <Label htmlFor="ns-nome">Nome do Setor</Label>
               <Input id="ns-nome" value={newSector.nome} onChange={(e) => setNewSector({ ...newSector, nome: e.target.value })} required />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ns-resp">Responsável</Label>
-                <Input id="ns-resp" value={newSector.responsavel} onChange={(e) => setNewSector({ ...newSector, responsavel: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ns-ramal">Ramal</Label>
-                <Input id="ns-ramal" value={newSector.ramal} onChange={(e) => setNewSector({ ...newSector, ramal: e.target.value })} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ns-local">Localização</Label>
-              <Input id="ns-local" value={newSector.localizacao} onChange={(e) => setNewSector({ ...newSector, localizacao: e.target.value })} />
             </div>
             <Button type="submit" className="w-full">Cadastrar</Button>
           </form>
@@ -295,12 +259,11 @@ const Usuarios = () => {
 
       <Card>
         <CardContent>
-          <Table>
+          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
                 <TableHead>Nome</TableHead>
                 <TableHead>Usuário</TableHead>
-                <TableHead>Cargo</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -308,14 +271,13 @@ const Usuarios = () => {
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
                   <TableCell className="flex items-center gap-2">
                     {user.nome}
                     {user.tipo === 'vip' && <Badge variant="default">VIP</Badge>}
                     {user.isAdmin && <Badge variant="destructive">ADMIN</Badge>}
                   </TableCell>
                   <TableCell>{user.username}</TableCell>
-                  <TableCell>{user.cargo}</TableCell>
                   <TableCell>{user.setor}</TableCell>
                   <TableCell>{(user.tipo || 'padrao').toUpperCase()}</TableCell>
                   <TableCell className="text-right">
@@ -347,7 +309,6 @@ const Usuarios = () => {
             <div className="space-y-2 text-sm">
               <div>Nome: {selectedUser.nome}</div>
               <div>Usuário: {selectedUser.username}</div>
-              <div>Cargo: {selectedUser.cargo}</div>
               <div>Setor: {selectedUser.setor}</div>
             </div>
           )}
@@ -369,7 +330,6 @@ const Usuarios = () => {
                     nome: formData.nome,
                     username: formData.username,
                     setor: formData.setor,
-                    cargo: formData.cargo,
                     password: formData.password,
                   }
                 })
@@ -388,10 +348,6 @@ const Usuarios = () => {
             <div className="space-y-2">
               <Label htmlFor="edit-password">Nova Senha</Label>
               <Input id="edit-password" type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-cargo">Cargo</Label>
-              <Input id="edit-cargo" value={formData.cargo} onChange={(e) => setFormData({ ...formData, cargo: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-setor">Setor</Label>

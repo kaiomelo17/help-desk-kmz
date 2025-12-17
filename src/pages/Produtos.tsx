@@ -11,10 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Package, Eye, PencilLine, Trash2, MinusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listProdutos, createProduto, updateProduto, deleteProduto, registrarSaida, listSaidas, updateSaida, deleteSaida, type Produto } from '@/lib/api/produtos';
+import { listProdutos, createProduto, updateProduto, deleteProduto, registrarSaida, listSaidas, updateSaida, deleteSaida, type Produto, type ProdutoSaida } from '@/lib/api/produtos';
 import { supabase } from '@/lib/supabase';
 
-interface Product extends Produto {}
+type Product = Produto;
 
 const Produtos = () => {
   const queryClient = useQueryClient()
@@ -61,8 +61,9 @@ const Produtos = () => {
       setDialogOpen(false)
       toast.success('Produto cadastrado com sucesso!')
     },
-    onError: (err: any) => {
-      toast.error(typeof err?.message === 'string' ? err.message : 'Falha ao cadastrar produto')
+    onError: (err: unknown) => {
+      const msg = typeof (err as { message?: unknown })?.message === 'string' ? (err as { message: string }).message : 'Falha ao cadastrar produto'
+      toast.error(msg)
     },
   })
   const handleSubmit = (e: React.FormEvent) => {
@@ -121,7 +122,7 @@ const Produtos = () => {
   const [saidaDestinatario, setSaidaDestinatario] = useState<string>('');
   const [saidaData, setSaidaData] = useState<string>('');
   const [saidaEditOpen, setSaidaEditOpen] = useState(false)
-  const [selectedSaida, setSelectedSaida] = useState<any | null>(null)
+  const [selectedSaida, setSelectedSaida] = useState<ProdutoSaida | null>(null)
   const [saidaEditForm, setSaidaEditForm] = useState({ quantidade: 1, destinatario: '', data: '' })
   const handleSaida = (product: Product) => {
     setSelectedProduct(product);
@@ -215,9 +216,10 @@ const Produtos = () => {
 
       <Card>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
                 <TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Estoque</TableHead>
@@ -227,7 +229,7 @@ const Produtos = () => {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => (
-                <TableRow key={product.id}>
+                <TableRow key={product.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
                   <TableCell>{product.nome}</TableCell>
                   <TableCell>{product.categoria}</TableCell>
                   <TableCell>
@@ -254,6 +256,7 @@ const Produtos = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -382,9 +385,9 @@ const Produtos = () => {
           <CardTitle>Histórico de Saídas</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table className="text-xs [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
                 <TableHead>Produto</TableHead>
                 <TableHead>Quantidade</TableHead>
                 <TableHead>Destinatário</TableHead>
@@ -394,12 +397,12 @@ const Produtos = () => {
             </TableHeader>
             <TableBody>
               {(!saidasData || saidasData.length === 0) ? (
-                <TableRow>
+                <TableRow className="border-b border-b-[0.25px] border-input">
                   <TableCell colSpan={5} className="text-muted-foreground">Nenhuma saída registrada</TableCell>
                 </TableRow>
               ) : (
                 saidasData.map((s, idx) => (
-                  <TableRow key={`${s.id}-${idx}`}>
+                  <TableRow key={`${s.id}-${idx}`} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
                     <TableCell>{produtos.find(p => p.id === s.produto_id)?.nome || s.produto_id}</TableCell>
                     <TableCell>{s.quantidade}</TableCell>
                     <TableCell>{s.destinatario || '-'}</TableCell>
@@ -455,9 +458,9 @@ const Produtos = () => {
               if (!selectedSaida) return
               await updateSaida(selectedSaida.id, {
                 quantidade: Math.max(1, Number(saidaEditForm.quantidade) || 1),
-                destinatario: (saidaEditForm.destinatario || undefined) as any,
-                data: (saidaEditForm.data || undefined) as any,
-              } as any)
+                destinatario: (saidaEditForm.destinatario || undefined),
+                data: (saidaEditForm.data || undefined),
+              })
               await queryClient.invalidateQueries({ queryKey: ['produto_saidas'] })
               await queryClient.invalidateQueries({ queryKey: ['produtos'] })
               setSaidaEditOpen(false)

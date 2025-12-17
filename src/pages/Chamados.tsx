@@ -74,7 +74,6 @@ const Chamados = () => {
     nome: '',
     username: '',
     setor: '',
-    cargo: '',
     password: '',
     tipo: 'padrao' as 'padrao' | 'vip' | 'admin',
   })
@@ -92,7 +91,7 @@ const Chamados = () => {
         status: 'Aberto' as const,
         data: new Date().toISOString().split('T')[0],
       }
-      return await createChamado(payload as any)
+      return await createChamado(payload)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['chamados'] })
@@ -118,7 +117,7 @@ const Chamados = () => {
     onError: () => toast.error('Falha ao atualizar chamado')
   })
   const updateStatus = (id: string, newStatus: Ticket['status']) => {
-    updateMut.mutate({ id, input: { status: newStatus } as any })
+    updateMut.mutate({ id, input: { status: newStatus } })
   }
 
   const handleView = (ticket: Ticket) => {
@@ -273,7 +272,6 @@ const Chamados = () => {
                 nome: newUser.nome,
                 username: newUser.username,
                 setor: newUser.setor,
-                cargo: newUser.cargo,
                 password: newUser.password,
                 tipo: newUser.tipo,
               })
@@ -281,7 +279,7 @@ const Chamados = () => {
                 .then(async (u) => {
                   await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
                   setFormData({ ...formData, solicitante: newUser.nome || newUser.username, setor: newUser.setor || formData.setor })
-                  setNewUser({ nome: '', username: '', setor: '', cargo: '', password: '', tipo: 'padrao' })
+                  setNewUser({ nome: '', username: '', setor: '', password: '', tipo: 'padrao' })
                   setAddUserOpen(false)
                   toast.success('Usuário cadastrado!')
                 })
@@ -326,10 +324,6 @@ const Chamados = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="nu-cargo">Cargo</Label>
-                <Input id="nu-cargo" value={newUser.cargo} onChange={(e) => setNewUser({ ...newUser, cargo: e.target.value })} />
-              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="nu-password">Senha</Label>
@@ -364,9 +358,10 @@ const Chamados = () => {
 
       <Card>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
                 <TableHead>Título</TableHead>
                 <TableHead>Prioridade</TableHead>
                 <TableHead>Status</TableHead>
@@ -377,7 +372,7 @@ const Chamados = () => {
             </TableHeader>
             <TableBody>
               {orderedTickets.map((ticket) => (
-                <TableRow key={ticket.id}>
+                <TableRow key={ticket.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
                   <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
                   <TableCell className="flex items-center gap-2">
                     <Badge variant={getPriorityColor(ticket.prioridade)}>{ticket.prioridade}</Badge>
@@ -413,6 +408,7 @@ const Chamados = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -454,7 +450,7 @@ const Chamados = () => {
                   solicitante: formData.solicitante,
                   setor: formData.setor,
                   tipo_servico: formData.tipoServico,
-                } as any
+                }
               })
               setEditOpen(false);
             }}

@@ -24,7 +24,7 @@ import { toast } from "sonner";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, user } = useAuth() as any;
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/" />
   const path = window.location.pathname
   const isAdmin = user?.role === 'admin'

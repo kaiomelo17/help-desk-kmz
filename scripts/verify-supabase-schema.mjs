@@ -31,12 +31,24 @@ const REQUIRED_INDEXES = [
 ]
 
 async function main() {
-  const url = process.env.SUPABASE_DB_URL
+  const direct = process.env.SUPABASE_DB_URL
+  let url = direct
   if (!url) {
-    console.error('SUPABASE_DB_URL não definido no .env. Configure para verificar schema.')
+    const viteUrl = process.env.VITE_SUPABASE_URL
+    const dbPass = process.env.SUPABASE_DB_PASSWORD
+    if (viteUrl && dbPass) {
+      const m = viteUrl.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co$/i)
+      const ref = m ? m[1] : null
+      if (ref) {
+        url = `postgresql://postgres:${encodeURIComponent(dbPass)}@db.${ref}.supabase.co:5432/postgres`
+      }
+    }
+  }
+  if (!url) {
+    console.error('SUPABASE_DB_URL não definido no .env. Defina SUPABASE_DB_URL ou SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL.')
     process.exit(1)
   }
-  const client = new Client({ connectionString: url })
+  const client = new Client({ connectionString: url, ssl: { rejectUnauthorized: false } })
   await client.connect()
 
   const results = {}
@@ -88,4 +100,3 @@ main().catch(err => {
   console.error('Erro ao verificar schema:', err?.message || err)
   process.exit(1)
 })
-

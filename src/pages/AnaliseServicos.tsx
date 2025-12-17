@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useQuery } from '@tanstack/react-query'
 import { listChamados, type Chamado } from '@/lib/api/chamados'
 import { useMemo, useState, useCallback } from 'react'
@@ -47,7 +48,7 @@ const AnaliseServicos = () => {
       if (term && !`${c.titulo} ${c.usuario} ${c.solicitante}`.toLowerCase().includes(term)) return false
       return true
     })
-  }, [chamados, statusFilter, tipoFilter, periodo, search, isInPeriodo])
+  }, [chamados, statusFilter, tipoFilter, search, isInPeriodo])
 
   const metrics = useMemo(() => {
     const rows = filtered
@@ -97,97 +98,110 @@ const AnaliseServicos = () => {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="relative">
-              <Input
-                placeholder="Buscar por título, usuário, solicitante..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ('all' | Chamado['status']))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="Aberto">Aberto</SelectItem>
-                <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-                <SelectItem value="Concluído">Concluído</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={tipoFilter} onValueChange={setTipoFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tipo de serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {tipos.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={periodo} onValueChange={(v) => setPeriodo(v as ('todos' | 'hoje' | 'semana' | 'mes'))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="hoje">Hoje</SelectItem>
-                <SelectItem value="semana">Últimos 7 dias</SelectItem>
-                <SelectItem value="mes">Este mês</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader><CardTitle>Tempo mínimo por serviço</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.tempoMinimoPorServico}</div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+          <CardHeader className="p-3"><CardTitle className="text-sm font-medium">Tempo mínimo por serviço</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="text-lg font-semibold">{metrics.tempoMinimoPorServico}</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
               <TrendingUp className="h-3 w-3 text-success" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Feitos hoje</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{metrics.feitosHoje}</div></CardContent>
+          <CardHeader className="p-3"><CardTitle className="text-sm font-medium">Feitos hoje</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><div className="text-lg font-semibold">{metrics.feitosHoje}</div></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Em aberto</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{metrics.emAberto}</div></CardContent>
+          <CardHeader className="p-3"><CardTitle className="text-sm font-medium">Em aberto</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><div className="text-lg font-semibold">{metrics.emAberto}</div></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Em andamento</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{metrics.emAndamento}</div></CardContent>
+          <CardHeader className="p-3"><CardTitle className="text-sm font-medium">Em andamento</CardTitle></CardHeader>
+          <CardContent className="p-3 pt-0"><div className="text-lg font-semibold">{metrics.emAndamento}</div></CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Resumo dos Serviços (filtrados)</CardTitle>
+        <CardHeader className="p-3">
+          <CardTitle>Resumo dos Serviços</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {filtered.slice(0, 50).map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                <div className="flex-1">
-                  <p className="font-medium">{c.titulo}</p>
-                  <p className="text-sm text-muted-foreground">{c.tipo_servico} • {c.usuario}</p>
-                </div>
-                <Badge variant={getStatusColor(c.status)}>{c.status}</Badge>
-              </div>
-            ))}
-            {!filtered.length && <p className="text-sm text-muted-foreground">Nenhum serviço encontrado com os filtros selecionados.</p>}
-          </div>
+        <CardContent className="p-3 pt-0">
+          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
+            <TableHeader>
+              <TableRow className="border-b border-b-[0.25px] border-input">
+                <TableHead>Título</TableHead>
+                <TableHead>Tipo de serviço</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Usuário</TableHead>
+                <TableHead>Data</TableHead>
+              </TableRow>
+              <TableRow className="border-b border-b-[0.25px] border-input">
+                <TableCell>
+                  <Input
+                    placeholder="Buscar por título/usuário"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                    <SelectTrigger><SelectValue placeholder="Tipo de serviço" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {tipos.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ('all' | Chamado['status']))}>
+                    <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="Aberto">Aberto</SelectItem>
+                      <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+                      <SelectItem value="Concluído">Concluído</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Input placeholder="Filtrar usuário" onChange={(e) => setSearch(e.target.value)} />
+                </TableCell>
+                <TableCell>
+                  <Select value={periodo} onValueChange={(v) => setPeriodo(v as ('todos' | 'hoje' | 'semana' | 'mes'))}>
+                    <SelectTrigger><SelectValue placeholder="Período" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="hoje">Hoje</SelectItem>
+                      <SelectItem value="semana">Últimos 7 dias</SelectItem>
+                      <SelectItem value="mes">Este mês</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.slice(0, 100).map((c) => (
+                <TableRow key={c.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                  <TableCell className="font-medium">{c.titulo}</TableCell>
+                  <TableCell>{c.tipo_servico}</TableCell>
+                  <TableCell><Badge variant={getStatusColor(c.status)}>{c.status}</Badge></TableCell>
+                  <TableCell>{c.usuario}</TableCell>
+                  <TableCell>{c.data || '-'}</TableCell>
+                </TableRow>
+              ))}
+              {!filtered.length && (
+                <TableRow className="border-b border-b-[0.25px] border-input">
+                  <TableCell colSpan={5} className="text-muted-foreground">Nenhum serviço encontrado com os filtros selecionados.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
+      
     </div>
   )
 }

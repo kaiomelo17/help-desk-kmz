@@ -112,20 +112,20 @@ const Dashboard = () => {
       </div>
 
       
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <Card key={stat.title}>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="p-3 flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {stat.title}
                   </CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  <stat.icon className="h-3 w-3 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                <CardContent className="p-3 pt-0">
+                  <div className="text-lg font-semibold">{stat.value}</div>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
                     <TrendingUp className="h-3 w-3 text-success" />
-                    <span className="text-success">{stat.change}</span>
+                    <span className="text-success"></span>
                   </div>
                 </CardContent>
               </Card>
@@ -133,49 +133,49 @@ const Dashboard = () => {
           </div>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="p-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">{teamStatus.label}</CardTitle>
-              <teamStatus.icon className="h-4 w-4 text-success" />
+              <teamStatus.icon className="h-3 w-3 text-success" />
             </CardHeader>
-            <CardContent>
-              <div className="text-lg font-semibold">{teamStatus.state}</div>
+            <CardContent className="p-3 pt-0">
+              <div className="text-base font-semibold">{teamStatus.state}</div>
               {user?.tier === 'vip' && (
-                <div className="mt-2">
+                <div className="mt-1">
                   <Badge variant="default">VIP</Badge>
-                  <span className="ml-2 text-sm text-muted-foreground">Atendimento prioritário habilitado</span>
+                  <span className="ml-2 text-xs text-muted-foreground">Atendimento prioritário habilitado</span>
                 </div>
               )}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Chamados Recentes</CardTitle>
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm font-medium">Chamados Recentes</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="p-3 pt-0">
+              <div className="space-y-3">
                 {recentTickets.map((ticket) => (
                   <div
                     key={ticket.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="bg-primary/10 rounded-full p-2">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="bg-primary/10 rounded-full p-1.5">
                         <HeadphonesIcon className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">{ticket.title}</p>
-                        <p className="text-sm text-muted-foreground">{ticket.user}</p>
+                        <p className="text-xs text-muted-foreground">{ticket.user}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <Badge variant={getPriorityColor(ticket.priority)}>
                         {ticket.priority}
                       </Badge>
                       <Badge variant={getStatusColor(ticket.status)}>
                         {ticket.status}
                       </Badge>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {ticket.time}
                       </div>

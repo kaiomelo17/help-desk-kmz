@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "db:apply": "node scripts/apply-supabase-schema.mjs",
     "db:verify": "node scripts/verify-supabase-schema.mjs",
-    "db:verify:http": "node scripts/verify-supabase-tables.mjs"
+    "db:verify:http": "node scripts/verify-supabase-tables.mjs",
+    "db:test:schema": "node scripts/test-supabase-schema.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -49,7 +50,9 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
+    "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
+    "jspdf": "^3.0.4",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",

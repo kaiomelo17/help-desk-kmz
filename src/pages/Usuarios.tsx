@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Briefcase, Eye, PencilLine, Trash2 } from 'lucide-react';
+import { Plus, Search, Eye, PencilLine, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -74,7 +74,7 @@ const Usuarios = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      setFormData({ nome: '', username: '', setor: '', cargo: '', password: '', tipo: 'padrao' })
+      setFormData({ nome: '', username: '', setor: '', password: '', tipo: 'padrao' })
       setDialogOpen(false)
       toast.success('Usuário cadastrado com sucesso!')
     },

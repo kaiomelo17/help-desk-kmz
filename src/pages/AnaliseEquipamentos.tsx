@@ -377,7 +377,7 @@ const AnaliseEquipamentos = () => {
                 {ordered.slice(0, 200).map((e) => (
                   <TableRow
                     key={e.id}
-                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                     onDoubleClick={() => {
                       setSelected(e)
                       setFormData({

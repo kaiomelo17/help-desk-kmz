@@ -26,9 +26,10 @@ import {
   LogOut,
   User,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext';
-import { LOGO_SRC, LOGO_MINI_SRC } from '@/config/branding';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
 
 const mainMenu = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -50,33 +51,18 @@ const Sidebar = () => {
   const { pathname } = useLocation()
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const { theme, setTheme } = useTheme()
   const [cadastrosOpen, setCadastrosOpen] = useState(false)
   const isActive = (href: string) => pathname.startsWith(href)
   const anyCadastrosActive = cadastros.some((c) => isActive(c.href))
-
-  const [logoSrc, setLogoSrc] = useState<string>(LOGO_SRC)
-  const [fallbackIndex, setFallbackIndex] = useState<number>(0)
-
-  useEffect(() => {
-    setFallbackIndex(0)
-    setLogoSrc(isCollapsed ? '/concrem-bg.jpg/concrem-logo-mini.png' : '/concrem-bg.jpg/concrem-logo.png')
-  }, [isCollapsed])
-
-  const handleLogoError = () => {
-    const fallbacks = isCollapsed
-      ? [LOGO_MINI_SRC, '/assets/concrem-logo-mini.png', '/concrem-logo-mini.png', '/assets/logo-colapsado.png']
-      : [LOGO_SRC, '/assets/concrem-logo.png', '/concrem-logo.png', '/assets/logo-completo.png']
-    if (fallbackIndex < fallbacks.length) {
-      setLogoSrc(fallbacks[fallbackIndex])
-      setFallbackIndex((i) => i + 1)
-    }
-  }
 
   return (
     <aside className={cn('fixed left-0 top-0 h-screen bg-primary text-primary-foreground transition-all duration-300 flex flex-col', isCollapsed ? 'w-20' : 'w-64')}>
       <div className="p-6 border-b border-primary-hover flex items-center justify-center">
         <button onClick={toggle} className="w-full">
-          <img src={logoSrc} onError={handleLogoError} alt="Logo" className="h-8 mx-auto" />
+          <div className="text-center font-extrabold tracking-wide">
+            <span className={cn(isCollapsed ? 'text-lg' : 'text-2xl')}>KMZ</span>
+          </div>
         </button>
       </div>
 
@@ -140,6 +126,13 @@ const Sidebar = () => {
           {!isCollapsed && <span>{user?.name || user?.email || 'Usuário'}</span>}
         </div>
         <Separator className="bg-primary-hover" />
+        <Button
+          variant="sidebar"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        >
+          {theme === 'dark' ? <Sun className={cn('h-5 w-5', !isCollapsed && 'mr-2')} /> : <Moon className={cn('h-5 w-5', !isCollapsed && 'mr-2')} />}
+          {!isCollapsed && <span>{theme === 'dark' ? 'Tema Claro' : 'Tema Escuro'}</span>}
+        </Button>
         <Button
           variant="sidebar"
           onClick={() => { logout(); navigate('/') }}

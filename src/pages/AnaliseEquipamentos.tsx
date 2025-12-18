@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listEquipamentos, updateEquipamento, deleteEquipamento, type Equipamento } from '@/lib/api/equipamentos'
 import { listSetores } from '@/lib/api/setores'
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 import { HardHat, TrendingUp, LogOut, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -18,9 +19,17 @@ const AnaliseEquipamentos = () => {
   const queryClient = useQueryClient()
   const { data: equipamentos } = useQuery({ queryKey: ['equipamentos'], queryFn: listEquipamentos, staleTime: 30000 })
   const { data: setores } = useQuery({ queryKey: ['setores'], queryFn: listSetores, staleTime: 60000 })
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const isVip = user?.tier === 'vip'
+  const canEdit = isAdmin || !isVip
 
   const tipos = useMemo(() => Array.from(new Set((equipamentos ?? []).map(e => e.tipo))), [equipamentos])
-  const setoresOptions = useMemo(() => (setores ?? []).map(s => s.nome), [setores])
+  const setoresOptions = useMemo(() => {
+    return (setores ?? [])
+      .map(s => (s.nome || '').toUpperCase())
+      .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }))
+  }, [setores])
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | Equipamento['status']>('all')
@@ -59,7 +68,7 @@ const AnaliseEquipamentos = () => {
     return rows.filter(e => {
       if (statusFilter !== 'all' && e.status !== statusFilter) return false
       if (tipoFilter !== 'all' && e.tipo !== tipoFilter) return false
-      if (setorFilter !== 'all' && (e.setor ?? '-') !== setorFilter) return false
+      if (setorFilter !== 'all' && ((e.setor ?? '-').toUpperCase()) !== setorFilter) return false
       const term = search.toLowerCase()
       if (term && !`${e.nome} ${e.patrimonio} ${e.usuario ?? ''}`.toLowerCase().includes(term)) return false
       if (nomeFilter && !e.nome.toLowerCase().includes(nomeFilter.toLowerCase())) return false
@@ -369,7 +378,15 @@ const AnaliseEquipamentos = () => {
                   <TableRow
                     key={e.id}
                     className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
-                    onDoubleClick={() => openEdit(e)}
+                    onDoubleClick={() => {
+                      setSelected(e)
+                      setFormData({
+                        nome: e.nome, tipo: e.tipo, patrimonio: e.patrimonio, marca: e.marca, modelo: e.modelo, status: e.status,
+                        usuario: e.usuario, setor: e.setor, ram: e.ram, armazenamento: e.armazenamento, processador: e.processador,
+                        polegadas: e.polegadas, ghz: e.ghz,
+                      })
+                      setEditOpen(true)
+                    }}
                   >
                     <TableCell className="font-mono">{orderMap.get(e.id) ?? '-'}</TableCell>
                     <TableCell>{e.tipo}</TableCell>
@@ -411,26 +428,27 @@ const AnaliseEquipamentos = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
+                if (!canEdit) return
                 updateMut.mutate()
               }}
               className="space-y-3"
             >
               <div className="space-y-2">
                 <Label htmlFor="edit-nome">Descrição</Label>
-                <Input id="edit-nome" value={formData.nome ?? ''} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
+                <Input id="edit-nome" value={formData.nome ?? ''} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-tipo">Tipo</Label>
-                <Input id="edit-tipo" value={formData.tipo ?? ''} onChange={(e) => setFormData({ ...formData, tipo: e.target.value })} />
+                <Input id="edit-tipo" value={formData.tipo ?? ''} onChange={(e) => setFormData({ ...formData, tipo: e.target.value })} disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-patrimonio">Patrimônio</Label>
-                <Input id="edit-patrimonio" value={formData.patrimonio ?? ''} onChange={(e) => setFormData({ ...formData, patrimonio: e.target.value })} />
+                <Input id="edit-patrimonio" value={formData.patrimonio ?? ''} onChange={(e) => setFormData({ ...formData, patrimonio: e.target.value })} disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">Status</Label>
                 <Select value={(formData.status ?? selected.status) as Equipamento['status']} onValueChange={(v) => setFormData({ ...formData, status: v as Equipamento['status'] })}>
-                  <SelectTrigger id="edit-status"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger id="edit-status" disabled={!canEdit}><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Disponível">Disponível</SelectItem>
                     <SelectItem value="Em Uso">Em Uso</SelectItem>
@@ -441,34 +459,36 @@ const AnaliseEquipamentos = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-usuario">Usuário</Label>
-                <Input id="edit-usuario" value={formData.usuario ?? ''} onChange={(e) => setFormData({ ...formData, usuario: e.target.value })} />
+                <Input id="edit-usuario" value={formData.usuario ?? ''} onChange={(e) => setFormData({ ...formData, usuario: e.target.value })} disabled={!canEdit} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-setor">Setor</Label>
-                <Input id="edit-setor" value={formData.setor ?? ''} onChange={(e) => setFormData({ ...formData, setor: e.target.value })} />
+                <Input id="edit-setor" value={formData.setor ?? ''} onChange={(e) => setFormData({ ...formData, setor: e.target.value })} disabled={!canEdit} />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" className="flex-1">Salvar</Button>
+                {canEdit && <Button type="submit" className="flex-1">Salvar</Button>}
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setEditOpen(false)}>Cancelar</Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => {
-                    if (!selected) return
-                    if (confirm('Deseja realmente excluir este equipamento?')) {
-                      deleteMut.mutate(selected.id, {
-                        onSuccess: async () => {
-                          await queryClient.invalidateQueries({ queryKey: ['equipamentos'] })
-                          setEditOpen(false)
-                          setSelected(null)
-                        }
-                      })
-                    }
-                  }}
-                >
-                  Excluir
-                </Button>
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      if (!selected) return
+                      if (confirm('Deseja realmente excluir este equipamento?')) {
+                        deleteMut.mutate(selected.id, {
+                          onSuccess: async () => {
+                            await queryClient.invalidateQueries({ queryKey: ['equipamentos'] })
+                            setEditOpen(false)
+                            setSelected(null)
+                          }
+                        })
+                      }
+                    }}
+                  >
+                    Excluir
+                  </Button>
+                )}
               </div>
             </form>
           )}

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Printer, FileText, Eye, PencilLine, Trash2 } from 'lucide-react';
-import { LOGO_SRC } from '@/config/branding';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listEquipamentos, createEquipamento, updateEquipamento, deleteEquipamento, type Equipamento as EquipamentoType } from '@/lib/api/equipamentos';
@@ -36,7 +35,9 @@ const Equipamentos = () => {
     queryFn: async () => await listSetores(),
     staleTime: 1000 * 60,
   })
-  const setoresOptions = (setoresData ?? []).map((s: SetorType) => s.nome)
+  const setoresOptions = (setoresData ?? [])
+    .map((s: SetorType) => (s.nome || '').toUpperCase())
+    .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }))
 
   const [searchTerm, setSearchTerm] = useState('');
   const [prefixFilter, setPrefixFilter] = useState<'all' | 'JV' | 'PC' | 'TAB' | 'CEL' | 'IMP' | 'MON'>('all');
@@ -215,7 +216,7 @@ const Equipamentos = () => {
       modelo: equipment.modelo || '',
       status: equipment.status,
       usuario: equipment.usuario || '',
-      setor: equipment.setor || '',
+      setor: (equipment.setor || '').toUpperCase(),
       ram: equipment.ram || '',
       armazenamento: equipment.armazenamento || '',
       processador: equipment.processador || '',
@@ -257,14 +258,14 @@ const Equipamentos = () => {
       header.style.display = 'flex'
       header.style.justifyContent = 'center'
       header.style.alignItems = 'center'
-      header.style.padding = '0'
-      const logo = document.createElement('img')
-      logo.src = LOGO_SRC
-      logo.alt = 'Concrem Portas Premium'
-      logo.style.maxWidth = '120mm'
-      logo.style.height = 'auto'
-      logo.style.display = 'block'
-      header.appendChild(logo)
+      header.style.padding = '6mm 0'
+      header.style.borderBottom = '2px solid #2563eb'
+      const brand = document.createElement('div')
+      brand.textContent = 'KMZ TECNOLOGIA'
+      brand.style.fontWeight = '800'
+      brand.style.fontSize = '18pt'
+      brand.style.letterSpacing = '1px'
+      header.appendChild(brand)
       const title = document.createElement('h2')
       title.textContent = `TERMO DE RESPONSABILIDADE DE ${String(selectedEquipment.tipo || '').toUpperCase() || 'EQUIPAMENTO'}`
       title.style.textAlign = 'center'
@@ -291,7 +292,7 @@ const Equipamentos = () => {
         if (e?.ghz) specs.push(`GHz: ${e.ghz}`)
       }
       const specsText = specs.length ? specs.join(' • ') : '-'
-      pIntro.innerHTML = `CONCREM INDUSTRIAL LTDA, com matriz no endereço Rodovia BR 010, s/n° / KM 31, inscrita no CNPJ sob o n° 18.543.638/0001-34, neste ato, entrega de ${selectedEquipment.tipo} marca: ${e?.marca || '-'} modelo: ${e?.modelo || '-'} ESPECIFICAÇÕES: ${specsText}, ao funcionário ${selectedEquipment.usuario || '-'}, doravante denominado simplesmente "USUÁRIO", sob as seguintes condições:`
+      pIntro.innerHTML = `KMZ TECNOLOGIA, com matriz no endereço Rua Tecnologia, 100 - Centro - São Paulo/SP, inscrita no CNPJ sob o n° 00.000.000/0001-00, telefone (11) 0000-0000, e-mail contato@kmz.com.br, neste ato, entrega de ${selectedEquipment.tipo} marca: ${e?.marca || '-'} modelo: ${e?.modelo || '-'} ESPECIFICAÇÕES: ${specsText}, ao funcionário ${selectedEquipment.usuario || '-'}, doravante denominado simplesmente "USUÁRIO", sob as seguintes condições:`
       const list = document.createElement('ol')
       list.style.listStyle = 'decimal'
       list.style.paddingLeft = '6mm'
@@ -316,7 +317,7 @@ const Equipamentos = () => {
       meta.style.justifyContent = 'space-between'
       meta.style.marginTop = '6mm'
       meta.style.fontSize = '10.5pt'
-      meta.innerHTML = `<span>Dom Eliseu / ${new Date().toLocaleDateString('pt-BR')}</span><span>Setor: ${selectedEquipment.setor || '-'}</span>`
+      meta.innerHTML = `<span>São Paulo/SP / ${new Date().toLocaleDateString('pt-BR')}</span><span>Setor: ${selectedEquipment.setor || '-'}</span>`
       body.appendChild(pIntro)
       body.appendChild(list)
       body.appendChild(meta)
@@ -347,7 +348,7 @@ const Equipamentos = () => {
       const x = (pageWidth - drawWidthMm) / 2
       const contentY = marginMm
       pdf.addImage(imgData, 'PNG', x, contentY, drawWidthMm, drawHeightMm)
-      const borderColor = { r: 26, g: 73, b: 33 }
+      const borderColor = { r: 37, g: 99, b: 235 }
       pdf.setDrawColor(borderColor.r, borderColor.g, borderColor.b)
       pdf.setLineWidth(0.7)
       pdf.rect(3, 3, pageWidth - 6, pageHeight - 6)
@@ -368,7 +369,7 @@ const Equipamentos = () => {
       const nomeText = `Nome: ${selectedEquipment.usuario || '-'}`
       pdf.text(nomeText, pageWidth / 2, nomeCenterY, { align: 'center' })
       pdf.setFontSize(9)
-      const footerText = 'Rod. BR-010, Km 31, Interior - Cep 68653-000 Dom Eliseu-PA - Tel: (94) 98114-2020 • CNPJ: 18.543.638/0001-34 • IE: 15.417.865-9'
+      const footerText = 'Rua Tecnologia, 100 - Centro - São Paulo/SP • Tel: (11) 0000-0000 • CNPJ: 00.000.000/0001-00 • contato@kmz.com.br'
       const footerY = pageHeight - marginMm
       pdf.text(footerText, pageWidth / 2, footerY, { align: 'center' })
       const filename = `termo-${selectedEquipment?.patrimonio || selectedEquipment?.tipo || 'equipamento'}.pdf`
@@ -605,7 +606,11 @@ const Equipamentos = () => {
             </TableHeader>
             <TableBody>
               {filteredEquipments.map((equipment) => (
-                <TableRow key={equipment.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                <TableRow
+                  key={equipment.id}
+                  className="odd:bg-muted/40 even:bg-card hover:bg-muted/50 border-b border-b-[0.25px] border-input"
+                  onDoubleClick={() => handleEdit(equipment)}
+                >
                   <TableCell className="font-mono">{orderMap.get(equipment.id) ?? '-'}</TableCell>
                   <TableCell>{equipment.nome}</TableCell>
                   <TableCell>{equipment.tipo}</TableCell>
@@ -614,17 +619,11 @@ const Equipamentos = () => {
                     <Badge variant={getStatusColor(equipment.status)}>{equipment.status}</Badge>
                   </TableCell>
                   <TableCell>{equipment.usuario || '-'}</TableCell>
-                  <TableCell>{equipment.setor || '-'}</TableCell>
+                  <TableCell>{equipment.setor ? equipment.setor.toUpperCase() : '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button size="icon" variant="outline" aria-label="Visualizar" onClick={() => handleView(equipment)}>
                         <Eye />
-                      </Button>
-                      <Button size="icon" variant="secondary" aria-label="Editar" onClick={() => handleEdit(equipment)}>
-                        <PencilLine />
-                      </Button>
-                      <Button size="icon" variant="destructive" aria-label="Excluir" onClick={() => handleDelete(equipment.id)}>
-                        <Trash2 />
                       </Button>
                       <Button size="icon" variant="outline" aria-label="Termo" onClick={() => handlePrintTerm(equipment)}>
                         <FileText />
@@ -646,16 +645,16 @@ const Equipamentos = () => {
             <DialogTitle>Termo de Responsabilidade</DialogTitle>
           </DialogHeader>
           {selectedEquipment && (
-            <div className="space-y-6 p-8 bg-white text-black border border-gray-300 rounded-md" id="termo-responsabilidade">
-              <div className="flex items-center justify-center pb-6 border-b border-emerald-500">
-                <img src={LOGO_SRC} alt="Concrem" className="h-10" />
+              <div className="space-y-6 p-8 bg-white text-black border border-gray-300 rounded-md" id="termo-responsabilidade">
+              <div className="flex items-center justify-center pb-6 border-b border-primary">
+                <div className="text-2xl font-extrabold tracking-wide">KMZ TECNOLOGIA</div>
               </div>
               <div className="text-center">
                 <h2 className="text-xl font-semibold">TERMO DE RESPONSABILIDADE DE {selectedEquipment.tipo}</h2>
               </div>
               <div className="space-y-4 text-sm leading-relaxed">
                 <p>
-                  CONCREM INDUSTRIAL LTDA, com matriz no endereço Rodovia BR 010, s/n° / KM 31, inscrita no CNPJ sob o n° 18.543.638/0001-34, neste ato, entrega de {selectedEquipment.tipo} marca: {selectedEquipment.marca || '-'} modelo: {selectedEquipment.modelo || '-'} ESPECIFICAÇÕES: {(() => {
+                  KMZ TECNOLOGIA, com matriz no endereço Rua Tecnologia, 100 - Centro - São Paulo/SP, inscrita no CNPJ sob o n° 00.000.000/0001-00, telefone (11) 0000-0000, e-mail contato@kmz.com.br, neste ato, entrega de {selectedEquipment.tipo} marca: {selectedEquipment.marca || '-'} modelo: {selectedEquipment.modelo || '-'} ESPECIFICAÇÕES: {(() => {
                     const e = selectedEquipment as Equipment
                     const arr: string[] = []
                     if (['Desktop','Notebook','Smartphone'].includes(e.tipo)) {
@@ -679,7 +678,7 @@ const Equipamentos = () => {
                   <li>Devolução: Ao término da prestação de serviço ou do contrato individual de trabalho, o USUÁRIO compromete-se a devolver o equipamento em perfeito estado, no mesmo dia em que for comunicado ou comunique seu desligamento, considerando o desgaste natural pelo uso normal do equipamento.</li>
                 </ol>
                 <div className="flex justify-between pt-4">
-                  <span>Dom Eliseu / {new Date().toLocaleDateString('pt-BR')}</span>
+                  <span>São Paulo/SP / {new Date().toLocaleDateString('pt-BR')}</span>
                   <span>Setor: {selectedEquipment.setor || '-'}</span>
                 </div>
                 <div className="mt-8 pt-6">
@@ -697,7 +696,7 @@ const Equipamentos = () => {
                 </div>
               </div>
               <div className="text-center text-xs mt-6 opacity-80">
-                Rod. BR-010, Km 31, Interior - Cep 68653-000 Dom Eliseu-PA - Tel: (94) 98114-2020 • CNPJ: 18.543.638/0001-34 • IE: 15.417.865-9
+                Rua Tecnologia, 100 - Centro - São Paulo/SP • Tel: (11) 0000-0000 • CNPJ: 00.000.000/0001-00 • contato@kmz.com.br
               </div>
             </div>
           )}
@@ -852,7 +851,35 @@ const Equipamentos = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1">Salvar</Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  if (!selectedEquipment) return
+                  if (confirm('Deseja realmente excluir este equipamento?')) {
+                    deleteMut.mutate(selectedEquipment.id)
+                    setEditOpen(false)
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  if (!selectedEquipment) return
+                  handlePrintTerm(selectedEquipment)
+                  setEditOpen(false)
+                }}
+              >
+                Termo
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

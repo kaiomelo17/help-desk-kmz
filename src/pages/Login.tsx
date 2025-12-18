@@ -28,10 +28,14 @@ const Login = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
-      style={{ backgroundImage: "url('/concrem-bg.jpg/Wallpaper-Concrem-Op4.jpg')" }}
+      className="relative min-h-screen flex items-center justify-center p-4 bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "url('/login.jpg'), linear-gradient(to bottom right, hsl(var(--primary)), hsl(var(--primary-hover)))",
+      }}
     >
-      <Card className="w-full max-w-md bg-transparent border-transparent shadow-none">
+      <div className="absolute inset-0 bg-black/30" />
+      <Card className="relative z-10 w-full max-w-md bg-transparent border-transparent shadow-none">
         <CardHeader className="text-center pb-8">
           <div className="flex justify-center items-center mb-4 gap-3"></div>
         </CardHeader>

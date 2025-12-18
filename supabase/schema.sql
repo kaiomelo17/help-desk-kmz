@@ -31,6 +31,13 @@ create table if not exists public.equipamentos (
   status text not null check (status in ('Disponível','Em Uso','Manutenção','Inativo')),
   usuario text,
   setor text,
+  marca text,
+  modelo text,
+  ram text,
+  armazenamento text,
+  processador text,
+  polegadas text,
+  ghz text,
   created_at timestamptz default now()
 );
 

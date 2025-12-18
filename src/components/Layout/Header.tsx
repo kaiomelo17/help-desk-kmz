@@ -13,7 +13,7 @@ const Header = () => {
       <Button variant="ghost" size="icon" onClick={toggle}>
         <Menu className="h-5 w-5" />
       </Button>
-      <div className="ml-4 font-semibold">BarberPro</div>
+      <div className="ml-4 font-semibold">KMZ TECNOLOGIA</div>
       <div className="ml-auto">
         <Button variant="ghost" size="icon" aria-label="Sair" onClick={() => { logout(); navigate('/'); }}>
           <LogOut className="h-5 w-5" />

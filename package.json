@@ -12,7 +12,8 @@
     "db:apply": "node scripts/apply-supabase-schema.mjs",
     "db:verify": "node scripts/verify-supabase-schema.mjs",
     "db:verify:http": "node scripts/verify-supabase-tables.mjs",
-    "db:test:schema": "node scripts/test-supabase-schema.mjs"
+    "db:test:schema": "node scripts/test-supabase-schema.mjs",
+    "db:reset-seed:kmz": "node scripts/reset-seed-kmz.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -65,6 +66,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "util-deprecate": "1.0.2",
     "vaul": "^0.9.9",
     "zod": "^3.25.76"
   },

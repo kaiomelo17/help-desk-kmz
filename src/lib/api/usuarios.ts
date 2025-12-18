@@ -40,7 +40,7 @@ export async function listUsuarios(): Promise<Usuario[]> {
 }
 
 export async function createUsuario(input: { nome: string; username: string; setor?: string; cargo?: string; password: string; tipo: 'padrao' | 'vip' | 'admin' }): Promise<Usuario> {
-  const payload = { name: input.nome, username: input.username, setor: input.setor, cargo: input.cargo, tier: input.tipo, password_hash: input.password }
+  const payload = { name: (input.nome || '').toUpperCase(), username: input.username, setor: (input.setor || '').toUpperCase(), cargo: input.cargo, tier: input.tipo, password_hash: input.password }
   if (useRest) {
     const r = await fetch(`${apiUrl}/usuarios`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     if (!r.ok) throw new Error('Falha ao criar usuário')
@@ -63,9 +63,9 @@ export async function createUsuario(input: { nome: string; username: string; set
 
 export async function updateUsuario(id: string, input: Partial<{ nome: string; username: string; setor?: string; cargo?: string; password?: string; tipo?: 'padrao' | 'vip' | 'admin' }>): Promise<Usuario> {
   const payload: Partial<Usuario> = {}
-  if (input.nome !== undefined) payload.name = input.nome
+  if (input.nome !== undefined) payload.name = (input.nome || '').toUpperCase()
   if (input.username !== undefined) payload.username = input.username
-  if (input.setor !== undefined) payload.setor = input.setor
+  if (input.setor !== undefined) payload.setor = (input.setor || '').toUpperCase()
   if (input.cargo !== undefined) payload.cargo = input.cargo
   if (input.password !== undefined) payload.password_hash = input.password
   if (input.tipo !== undefined) payload.tier = input.tipo

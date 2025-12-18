@@ -305,17 +305,31 @@ const Relatorios = () => {
                 <TableHead>Tipo de Serviço</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Tempo de Solução</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {concluidos.length === 0 ? (
                 <TableRow className="border-b border-b-[0.25px] border-input">
-                  <TableCell colSpan={7} className="text-muted-foreground">Nenhum chamado concluído</TableCell>
+                  <TableCell colSpan={6} className="text-muted-foreground">Nenhum chamado concluído</TableCell>
                 </TableRow>
               ) : (
                 concluidos.map((c) => (
-                  <TableRow key={c.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                  <TableRow
+                    key={c.id}
+                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    onDoubleClick={() => {
+                      setSelected(c)
+                      setFormData({
+                        titulo: c.titulo,
+                        descricao: c.descricao,
+                        solicitante: c.solicitante,
+                        setor: c.setor,
+                        tipo_servico: c.tipo_servico,
+                        data: c.data || '',
+                      })
+                      setEditOpen(true)
+                    }}
+                  >
                     <TableCell className="truncate max-w-[280px]">{c.titulo}</TableCell>
                     <TableCell>{c.solicitante}</TableCell>
                     <TableCell>{c.setor}</TableCell>
@@ -330,40 +344,6 @@ const Relatorios = () => {
                             ? formatMinutes(c.solution_duration_min)
                             : formatDuration(c.started_at || c.created_at || c.data, c.completed_at)
                     }</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          aria-label="Editar"
-                          onClick={() => {
-                            setSelected(c)
-                            setFormData({
-                              titulo: c.titulo,
-                              descricao: c.descricao,
-                              solicitante: c.solicitante,
-                              setor: c.setor,
-                              tipo_servico: c.tipo_servico,
-                              data: c.data || '',
-                            })
-                            setEditOpen(true)
-                          }}
-                        >
-                          <PencilLine />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          aria-label="Excluir"
-                          onClick={async () => {
-                            await deleteChamado(c.id)
-                            await queryClient.invalidateQueries({ queryKey: ['chamados'] })
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -422,8 +402,37 @@ const Relatorios = () => {
                 <Label htmlFor="hist-data">Data</Label>
                 <Input id="hist-data" type="date" value={formData.data} onChange={(e) => setFormData({ ...formData, data: e.target.value })} />
               </div>
+              </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1">Salvar</Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={async () => {
+                  if (!selected) return
+                  await updateChamado(selected.id, { status: 'Aberto' })
+                  await queryClient.invalidateQueries({ queryKey: ['chamados'] })
+                  setEditOpen(false)
+                }}
+              >
+                Reabrir
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex-1"
+                onClick={async () => {
+                  if (!selected) return
+                  if (confirm('Deseja realmente excluir este histórico?')) {
+                    await deleteChamado(selected.id)
+                    await queryClient.invalidateQueries({ queryKey: ['chamados'] })
+                    setEditOpen(false)
+                  }
+                }}
+              >
+                Excluir
+              </Button>
             </div>
-            <Button type="submit" className="w-full">Salvar</Button>
           </form>
         </DialogContent>
       </Dialog>

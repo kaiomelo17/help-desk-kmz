@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +67,10 @@ const Chamados = () => {
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin'
-  const setoresList = (setoresData ?? []).map((s: SetorType) => ({ id: s.id, nome: s.nome }))
+  const currentUserName = user?.name || user?.email || ''
+  const setoresList = (setoresData ?? [])
+    .map((s: SetorType) => ({ id: s.id, nome: (s.nome || '').toUpperCase() }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt', { sensitivity: 'base' }))
   const solicitantesList = (usuariosData ?? []).map((u: Usuario) => ({ id: u.id, nome: u.name || u.username }))
 
   const [newUser, setNewUser] = useState({
@@ -83,13 +86,14 @@ const Chamados = () => {
       const payload = {
         titulo: formData.titulo,
         descricao: formData.descricao,
-        usuario: user?.name || 'Usuário Atual',
+        usuario: user?.name || user?.email || 'Usuário Atual',
         solicitante: formData.solicitante,
         setor: formData.setor,
         tipo_servico: formData.tipoServico,
         is_vip: user?.tier === 'vip',
         status: 'Aberto' as const,
         data: new Date().toISOString().split('T')[0],
+        prioridade: 'media' as const,
       }
       return await createChamado(payload)
     },
@@ -105,6 +109,20 @@ const Chamados = () => {
     e.preventDefault()
     createMut.mutate()
   }
+  const canEditTicket = (t: Ticket) => {
+    return (isAdmin || t.solicitante === currentUserName) && t.status !== 'Concluído'
+  }
+  useEffect(() => {
+    if (dialogOpen) {
+      const currName = currentUserName
+      const currUser = (usuariosData ?? []).find((u: Usuario) => (u.name || u.username) === currName)
+      setFormData(fd => ({
+        ...fd,
+        solicitante: currName || fd.solicitante,
+        setor: (currUser?.setor || fd.setor).toUpperCase(),
+      }))
+    }
+  }, [dialogOpen, usuariosData, currentUserName])
 
   const updateMut = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: Partial<ChamadoType> }) => {
@@ -122,10 +140,15 @@ const Chamados = () => {
 
   const handleView = (ticket: Ticket) => {
     setSelectedTicket(ticket);
+    setFormData({ titulo: ticket.titulo, descricao: ticket.descricao, solicitante: ticket.solicitante, setor: ticket.setor, tipoServico: ticket.tipoServico })
     setViewOpen(true);
   };
 
   const handleEdit = (ticket: Ticket) => {
+    if (!canEditTicket(ticket)) {
+      toast.error('Você não tem permissão para editar este chamado')
+      return
+    }
     setSelectedTicket(ticket);
     setFormData({ titulo: ticket.titulo, descricao: ticket.descricao, solicitante: ticket.solicitante, setor: ticket.setor, tipoServico: ticket.tipoServico });
     setEditOpen(true);
@@ -173,12 +196,19 @@ const Chamados = () => {
     }
   };
 
+  const myTicketsAll = chamados.filter(t => t.solicitante === currentUserName)
+  const myCounts = {
+    aberto: myTicketsAll.filter(t => t.status === 'Aberto').length,
+    andamento: myTicketsAll.filter(t => t.status === 'Em Andamento').length,
+    concluido: myTicketsAll.filter(t => t.status === 'Concluído').length,
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="page-header">Chamados</h1>
-          <p className="text-muted-foreground">Gerencie os chamados de suporte</p>
+          <h1 className="page-header">Abrir Chamado</h1>
+          {isAdmin && <p className="text-muted-foreground">Gerencie os chamados de suporte</p>}
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -203,32 +233,38 @@ const Chamados = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="solicitante">Solicitante</Label>
-                <div className="flex items-center gap-2">
-                  <Select value={formData.solicitante} onValueChange={(value) => {
-                    const user = (usuariosData ?? []).find((u: Usuario) => (u.name || u.username) === value)
-                    setFormData({
-                      ...formData,
-                      solicitante: value,
-                      setor: user?.setor || ''
-                    })
-                  }}>
-                    <SelectTrigger id="solicitante">
-                      <SelectValue placeholder="Selecione o solicitante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {solicitantesList.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.nome}>{opt.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" size="icon" variant="outline" aria-label="Adicionar usuário" onClick={() => setAddUserOpen(true)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                {isAdmin ? (
+                  <div className="flex items-center gap-2">
+                    <Select value={formData.solicitante} onValueChange={(value) => {
+                      const user = (usuariosData ?? []).find((u: Usuario) => (u.name || u.username) === value)
+                      setFormData({
+                        ...formData,
+                        solicitante: value,
+                        setor: (user?.setor || '').toUpperCase()
+                      })
+                    }}>
+                      <SelectTrigger id="solicitante">
+                        <SelectValue placeholder="Selecione o solicitante" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {solicitantesList.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.nome}>{opt.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" size="icon" variant="outline" aria-label="Adicionar usuário" onClick={() => setAddUserOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Input id="solicitante" value={formData.solicitante} disabled />
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="setor">Setor</Label>
-                <Input id="setor" value={formData.setor} disabled />
+                <Input id="setor" value={formData.setor} disabled={!isAdmin} onChange={(e) => {
+                  if (isAdmin) setFormData({ ...formData, setor: e.target.value })
+                }} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tipo">Tipo de Serviço</Label>
@@ -278,7 +314,7 @@ const Chamados = () => {
               Promise.resolve(mut)
                 .then(async (u) => {
                   await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-                  setFormData({ ...formData, solicitante: newUser.nome || newUser.username, setor: newUser.setor || formData.setor })
+                  setFormData({ ...formData, solicitante: newUser.nome || newUser.username, setor: (newUser.setor || formData.setor).toUpperCase() })
                   setNewUser({ nome: '', username: '', setor: '', password: '', tipo: 'padrao' })
                   setAddUserOpen(false)
                   toast.success('Usuário cadastrado!')
@@ -334,83 +370,139 @@ const Chamados = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar chamados..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="Aberto">Aberto</SelectItem>
-            <SelectItem value="Em Andamento">Em Andamento</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card>
-        <CardContent>
-          <div className="overflow-x-auto">
-          <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
-            <TableHeader>
-              <TableRow className="border-b border-b-[0.25px] border-input">
-                <TableHead>Título</TableHead>
-                <TableHead>Prioridade</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Solicitante</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderedTickets.map((ticket) => (
-                <TableRow key={ticket.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
-                  <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
-                  <TableCell className="flex items-center gap-2">
-                    <Badge variant={getPriorityColor(ticket.prioridade)}>{ticket.prioridade}</Badge>
-                    {ticket.isVip && <Badge variant="default">VIP</Badge>}
-                  </TableCell>
-                  <TableCell><Badge variant={getStatusColor(ticket.status)}>{ticket.status}</Badge></TableCell>
-                  <TableCell>{ticket.solicitante}</TableCell>
-                  <TableCell className="flex items-center gap-1"><Clock className="h-3 w-3" />{ticket.data}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="icon" variant="outline" aria-label="Visualizar" onClick={() => handleView(ticket)}>
-                        <Eye />
-                      </Button>
-                      {isAdmin && (
-                        <>
-                          <Button size="icon" variant="secondary" aria-label="Editar" onClick={() => handleEdit(ticket)}>
-                            <PencilLine />
-                          </Button>
-                          <Button size="icon" variant="destructive" aria-label="Excluir" onClick={() => handleDelete(ticket.id)}>
-                            <Trash2 />
-                          </Button>
-                          {ticket.status !== 'Em Andamento' && (
-                            <Button size="sm" variant="outline" onClick={() => updateStatus(ticket.id, 'Em Andamento')}>Em Andamento</Button>
-                          )}
-                          {ticket.status !== 'Concluído' && (
-                            <Button size="sm" onClick={() => updateStatus(ticket.id, 'Concluído')}>Concluir</Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      {isAdmin && (
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar chamados..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        </CardContent>
-      </Card>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="Aberto">Aberto</SelectItem>
+              <SelectItem value="Em Andamento">Em Andamento</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {isAdmin ? (
+        <Card>
+          <CardContent>
+            <div className="overflow-x-auto">
+            <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
+              <TableHeader>
+                <TableRow className="border-b border-b-[0.25px] border-input">
+                  <TableHead>Título</TableHead>
+                  <TableHead>Prioridade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Solicitante</TableHead>
+                  <TableHead>Data</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderedTickets.map((ticket) => (
+                  <TableRow
+                    key={ticket.id}
+                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    onDoubleClick={() => handleView(ticket)}
+                  >
+                    <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
+                    <TableCell className="flex items-center gap-2">
+                      <Badge variant={getPriorityColor(ticket.prioridade)}>{ticket.prioridade}</Badge>
+                      {ticket.isVip && <Badge variant="default">VIP</Badge>}
+                    </TableCell>
+                    <TableCell><Badge variant={getStatusColor(ticket.status)}>{ticket.status}</Badge></TableCell>
+                    <TableCell>{ticket.solicitante}</TableCell>
+                    <TableCell className="flex items-center gap-1"><Clock className="h-3 w-3" />{ticket.data}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3">
+          <Card>
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm font-medium">Meus Chamados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+              <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
+                <TableHeader>
+                  <TableRow className="border-b border-b-[0.25px] border-input">
+                    <TableHead>Título</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {myTicketsAll.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                      onDoubleClick={() => handleView(ticket)}
+                    >
+                      <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
+                      <TableCell><Badge variant={getStatusColor(ticket.status)}>{ticket.status}</Badge></TableCell>
+                      <TableCell className="flex items-center gap-1"><Clock className="h-3 w-3" />{ticket.data}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm font-medium">Fila de Chamados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+              <Table className="text-sm [&_th]:text-sm [&_td]:py-1.5 [&_th]:py-1.5 [&_td]:px-2 [&_th]:px-2">
+                <TableHeader>
+                  <TableRow className="border-b border-b-[0.25px] border-input">
+                    <TableHead>Título</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Solicitante</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orderedTickets.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                      onDoubleClick={() => handleView(ticket)}
+                    >
+                      <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        <Badge variant={getPriorityColor(ticket.prioridade)}>{ticket.prioridade}</Badge>
+                        {ticket.isVip && <Badge variant="default">VIP</Badge>}
+                      </TableCell>
+                      <TableCell><Badge variant={getStatusColor(ticket.status)}>{ticket.status}</Badge></TableCell>
+                      <TableCell>{ticket.solicitante}</TableCell>
+                      <TableCell className="flex items-center gap-1"><Clock className="h-3 w-3" />{ticket.data}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent>
@@ -418,16 +510,57 @@ const Chamados = () => {
             <DialogTitle>Detalhes do Chamado</DialogTitle>
           </DialogHeader>
           {selectedTicket && (
-            <div className="space-y-2 text-sm">
-              <div>Título: {selectedTicket.titulo}</div>
-              <div>Descrição: {selectedTicket.descricao}</div>
-              <div>Solicitante: {selectedTicket.solicitante}</div>
-              <div>Setor: {selectedTicket.setor}</div>
-              <div>Tipo de Serviço: {selectedTicket.tipoServico}</div>
-              <div>Prioridade: {selectedTicket.prioridade}</div>
-              <div>Status: {selectedTicket.status}</div>
-              <div>Usuário: {selectedTicket.usuario}</div>
-              <div>Data: {selectedTicket.data}</div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!selectedTicket) return;
+                if (!canEditTicket(selectedTicket)) return;
+                updateMut.mutate({
+                  id: selectedTicket.id,
+                  input: { descricao: formData.descricao }
+                })
+                setViewOpen(false);
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="view-titulo">Título</Label>
+                <Input id="view-titulo" value={formData.titulo} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="view-solicitante">Solicitante</Label>
+                <Input id="view-solicitante" value={formData.solicitante} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="view-setor">Setor</Label>
+                <Input id="view-setor" value={formData.setor} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="view-tipo">Tipo de Serviço</Label>
+                <Input id="view-tipo" value={formData.tipoServico} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="view-descricao">Descrição</Label>
+                <Textarea id="view-descricao" rows={4} value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} disabled={!canEditTicket(selectedTicket)} />
+              </div>
+              {canEditTicket(selectedTicket) && (
+                <Button type="submit" className="w-full">Salvar</Button>
+              )}
+            </form>
+          )}
+          {selectedTicket && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {isAdmin && (
+                <>
+                  {selectedTicket.status !== 'Em Andamento' && (
+                    <Button variant="outline" onClick={() => updateStatus(selectedTicket.id, 'Em Andamento')}>Em Andamento</Button>
+                  )}
+                  {selectedTicket.status !== 'Concluído' && (
+                    <Button onClick={() => updateStatus(selectedTicket.id, 'Concluído')}>Concluir</Button>
+                  )}
+                  <Button variant="destructive" onClick={() => handleDelete(selectedTicket.id)}>Excluir</Button>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
@@ -466,11 +599,15 @@ const Chamados = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-solicitante">Solicitante</Label>
-              <Input id="edit-solicitante" value={formData.solicitante} onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })} />
+              <Input id="edit-solicitante" value={formData.solicitante} disabled={!isAdmin} onChange={(e) => {
+                if (isAdmin) setFormData({ ...formData, solicitante: e.target.value })
+              }} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-setor">Setor</Label>
-              <Input id="edit-setor" value={formData.setor} onChange={(e) => setFormData({ ...formData, setor: e.target.value })} />
+              <Input id="edit-setor" value={formData.setor} disabled={!isAdmin} onChange={(e) => {
+                if (isAdmin) setFormData({ ...formData, setor: e.target.value })
+              }} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-tipo">Tipo de Serviço</Label>

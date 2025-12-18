@@ -229,7 +229,11 @@ const Produtos = () => {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => (
-                <TableRow key={product.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                <TableRow
+                  key={product.id}
+                  className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                  onDoubleClick={() => handleEdit(product)}
+                >
                   <TableCell>{product.nome}</TableCell>
                   <TableCell>{product.categoria}</TableCell>
                   <TableCell>
@@ -238,15 +242,6 @@ const Produtos = () => {
                   <TableCell className="truncate max-w-[280px]">{product.descricao}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button size="icon" variant="outline" aria-label="Visualizar" onClick={() => handleView(product)}>
-                        <Eye />
-                      </Button>
-                      <Button size="icon" variant="secondary" aria-label="Editar" onClick={() => handleEdit(product)}>
-                        <PencilLine />
-                      </Button>
-                      <Button size="icon" variant="destructive" aria-label="Excluir" onClick={() => handleDelete(product.id)}>
-                        <Trash2 />
-                      </Button>
                       <Button size="icon" variant="outline" aria-label="Registrar Saída" onClick={() => handleSaida(product)}>
                         <MinusCircle />
                       </Button>
@@ -318,7 +313,28 @@ const Produtos = () => {
               <Label htmlFor="edit-descricao">Descrição</Label>
               <Textarea id="edit-descricao" rows={3} value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} />
             </div>
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1">Salvar</Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  if (!selectedProduct) return
+                  if (confirm('Deseja realmente excluir este produto?')) {
+                    deleteMut.mutate(selectedProduct.id, {
+                      onSuccess: async () => {
+                        await queryClient.invalidateQueries({ queryKey: ['produtos'] })
+                        setEditOpen(false)
+                        setSelectedProduct(null)
+                      }
+                    })
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -402,41 +418,26 @@ const Produtos = () => {
                 </TableRow>
               ) : (
                 saidasData.map((s, idx) => (
-                  <TableRow key={`${s.id}-${idx}`} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                  <TableRow
+                    key={`${s.id}-${idx}`}
+                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    onDoubleClick={() => {
+                      setSelectedSaida(s)
+                      setSaidaEditForm({
+                        quantidade: s.quantidade,
+                        destinatario: s.destinatario || '',
+                        data: s.data || '',
+                      })
+                      setSaidaEditOpen(true)
+                    }}
+                  >
                     <TableCell>{produtos.find(p => p.id === s.produto_id)?.nome || s.produto_id}</TableCell>
                     <TableCell>{s.quantidade}</TableCell>
                     <TableCell>{s.destinatario || '-'}</TableCell>
                     <TableCell>{s.data || '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          aria-label="Editar"
-                          onClick={() => {
-                            setSelectedSaida(s)
-                            setSaidaEditForm({
-                              quantidade: s.quantidade,
-                              destinatario: s.destinatario || '',
-                              data: s.data || '',
-                            })
-                            setSaidaEditOpen(true)
-                          }}
-                        >
-                          <PencilLine />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          aria-label="Excluir"
-                          onClick={async () => {
-                            await deleteSaida(s.id)
-                            await queryClient.invalidateQueries({ queryKey: ['produto_saidas'] })
-                            await queryClient.invalidateQueries({ queryKey: ['produtos'] })
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
+                        {/* ações específicas podem permanecer aqui se necessário */}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -479,7 +480,26 @@ const Produtos = () => {
               <Label htmlFor="edit-data">Data</Label>
               <Input id="edit-data" type="date" value={saidaEditForm.data} onChange={(e) => setSaidaEditForm({ ...saidaEditForm, data: e.target.value })} />
             </div>
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1">Salvar</Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex-1"
+                onClick={async () => {
+                  if (!selectedSaida) return
+                  if (confirm('Deseja realmente excluir esta saída?')) {
+                    await deleteSaida(selectedSaida.id)
+                    await queryClient.invalidateQueries({ queryKey: ['produto_saidas'] })
+                    await queryClient.invalidateQueries({ queryKey: ['produtos'] })
+                    setSaidaEditOpen(false)
+                    setSelectedSaida(null)
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

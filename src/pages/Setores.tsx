@@ -49,9 +49,9 @@ const Setores = () => {
     createMut.mutate()
   }
 
-  const filteredSectors = setores.filter(sector =>
-    sector.nome.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSectors = setores
+    .filter(sector => sector.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => a.nome.toUpperCase().localeCompare(b.nome.toUpperCase(), 'pt', { sensitivity: 'base' }));
 
   const handleView = (sector: Sector) => {
     setSelectedSector(sector);
@@ -146,10 +146,10 @@ const Setores = () => {
               {filteredSectors.map((sector) => (
                 <TableRow
                   key={sector.id}
-                  className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                  className="odd:bg-muted/40 even:bg-card hover:bg-muted/50 border-b border-b-[0.25px] border-input"
                   onDoubleClick={() => handleEdit(sector)}
                 >
-                  <TableCell className="flex items-center gap-2"><Building2 className="h-4 w-4" />{sector.nome}</TableCell>
+                  <TableCell className="flex items-center gap-2"><Building2 className="h-4 w-4" />{sector.nome.toUpperCase()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

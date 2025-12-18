@@ -35,9 +35,9 @@ const Usuarios = () => {
       const rows = await listUsuarios()
       return rows.map(r => ({
         id: r.id,
-        nome: r.name || '',
+        nome: (r.name || '').toUpperCase(),
         username: r.username || '',
-        setor: r.setor || '',
+        setor: (r.setor || '').toUpperCase(),
         password: '',
         tipo: r.tier || 'padrao',
         isAdmin: r.is_admin === 1 || r.tier === 'admin'
@@ -51,7 +51,9 @@ const Usuarios = () => {
     queryFn: async () => await listSetores(),
     staleTime: 1000 * 60,
   })
-  const setoresOptions = (setoresData ?? []).map((s: SetorType) => s.nome)
+  const setoresOptions = (setoresData ?? [])
+    .map((s: SetorType) => (s.nome || '').toUpperCase())
+    .sort((a, b) => a.localeCompare(b, 'pt', { sensitivity: 'base' }))
 
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -229,7 +231,7 @@ const Usuarios = () => {
               Promise.resolve(mut)
                 .then(async () => {
                   await queryClient.invalidateQueries({ queryKey: ['setores'] })
-                  setFormData({ ...formData, setor: newSector.nome || formData.setor })
+                  setFormData({ ...formData, setor: (newSector.nome || formData.setor).toUpperCase() })
                   setNewSector({ nome: '' })
                   setAddSectorOpen(false)
                   toast.success('Setor cadastrado!')
@@ -266,12 +268,15 @@ const Usuarios = () => {
                 <TableHead>Usuário</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                <TableRow
+                  key={user.id}
+                  className="odd:bg-muted/40 even:bg-card hover:bg-muted/50 border-b border-b-[0.25px] border-input"
+                  onDoubleClick={() => handleEdit(user)}
+                >
                   <TableCell className="flex items-center gap-2">
                     {user.nome}
                     {user.tipo === 'vip' && <Badge variant="default">VIP</Badge>}
@@ -280,19 +285,6 @@ const Usuarios = () => {
                   <TableCell>{user.username}</TableCell>
                   <TableCell>{user.setor}</TableCell>
                   <TableCell>{(user.tipo || 'padrao').toUpperCase()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="icon" variant="outline" aria-label="Visualizar" onClick={() => handleView(user)}>
-                        <Eye />
-                      </Button>
-                      <Button size="icon" variant="secondary" aria-label="Editar" onClick={() => handleEdit(user)}>
-                        <PencilLine />
-                      </Button>
-                      <Button size="icon" variant="destructive" aria-label="Excluir" onClick={() => handleDelete(user.id)}>
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -333,6 +325,7 @@ const Usuarios = () => {
                     password: formData.password,
                   }
                 })
+                setEditOpen(false)
               }}
               className="space-y-4"
             >
@@ -362,7 +355,28 @@ const Usuarios = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div className="flex gap-2 pt-2">
+              <Button type="submit" className="flex-1">Salvar</Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  if (!selectedUser) return
+                  if (confirm('Deseja realmente excluir este usuário?')) {
+                    deleteMut.mutate(selectedUser.id, {
+                      onSuccess: async () => {
+                        await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+                        setEditOpen(false)
+                        setSelectedUser(null)
+                      }
+                    })
+                  }
+                }}
+              >
+                Excluir
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

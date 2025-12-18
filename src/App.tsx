@@ -19,6 +19,8 @@ import NotFound from "./pages/NotFound";
 import { supabase } from "./lib/supabase";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { listUsuarios, createUsuario } from "@/lib/api/usuarios";
+import { ThemeProvider } from "next-themes";
  
 
 const queryClient = new QueryClient();
@@ -69,30 +71,48 @@ const App = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const bootstrap = (import.meta.env.VITE_BOOTSTRAP_ADMIN ?? '0') === '1'
+        if (!bootstrap) return
+        const rows = await listUsuarios()
+        const hasAdmin = (rows ?? []).some(u => u.tier === 'admin' || u.is_admin === 1)
+        if (hasAdmin) return
+        await createUsuario({ nome: 'ADMIN KMZ', username: 'admin', password: 'admin', tipo: 'admin' })
+        toast.success('Usuário admin criado: admin/admin')
+      } catch {
+        toast.info('Criação automática do admin indisponível')
+      }
+    })();
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Login />} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/dashboard/equipamentos" element={<ProtectedRoute><AnaliseEquipamentos /></ProtectedRoute>} />
-              <Route path="/dashboard/servicos" element={<ProtectedRoute><AnaliseServicos /></ProtectedRoute>} />
-              <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
-              <Route path="/chamados" element={<ProtectedRoute><Chamados /></ProtectedRoute>} />
-              <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
-              <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
-              <Route path="/setores" element={<ProtectedRoute><Setores /></ProtectedRoute>} />
-              <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AuthProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Login />} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/dashboard/equipamentos" element={<ProtectedRoute><AnaliseEquipamentos /></ProtectedRoute>} />
+                <Route path="/dashboard/servicos" element={<ProtectedRoute><AnaliseServicos /></ProtectedRoute>} />
+                <Route path="/equipamentos" element={<ProtectedRoute><Equipamentos /></ProtectedRoute>} />
+                <Route path="/chamados" element={<ProtectedRoute><Chamados /></ProtectedRoute>} />
+                <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+                <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
+                <Route path="/setores" element={<ProtectedRoute><Setores /></ProtectedRoute>} />
+                <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

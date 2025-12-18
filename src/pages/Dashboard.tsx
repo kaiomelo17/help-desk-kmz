@@ -99,12 +99,14 @@ const Dashboard = () => {
           <Button
             variant={'outline'}
             onClick={() => navigate('/dashboard/equipamentos')}
+            className="transition-standard shadow-card hover:shadow-card-hover"
           >
             Equipamentos
           </Button>
           <Button
             variant={'outline'}
             onClick={() => navigate('/dashboard/servicos')}
+            className="transition-standard shadow-card hover:shadow-card-hover"
           >
             Serviços
           </Button>
@@ -114,7 +116,7 @@ const Dashboard = () => {
       
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
-              <Card key={stat.title}>
+              <Card key={stat.title} className="stat-card">
                 <CardHeader className="p-3 flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {stat.title}
@@ -132,7 +134,7 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <Card>
+          <Card className="stat-card">
             <CardHeader className="p-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">{teamStatus.label}</CardTitle>
               <teamStatus.icon className="h-3 w-3 text-success" />
@@ -148,7 +150,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="stat-card">
             <CardHeader className="p-3">
               <CardTitle className="text-sm font-medium">Chamados Recentes</CardTitle>
             </CardHeader>
@@ -157,7 +159,7 @@ const Dashboard = () => {
                 {recentTickets.map((ticket) => (
                   <div
                     key={ticket.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/50 transition-standard"
                   >
                     <div className="flex items-center gap-3 flex-1">
                       <div className="bg-primary/10 rounded-full p-1.5">

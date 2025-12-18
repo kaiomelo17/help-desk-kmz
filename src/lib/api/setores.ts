@@ -38,20 +38,28 @@ export async function listSetores(): Promise<Setor[]> {
 
 export async function createSetor(input: Omit<Setor, 'id' | 'created_at'>): Promise<Setor> {
   if (useRest) {
-    const r = await fetch(`${apiUrl}/setores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+    const r = await fetch(`${apiUrl}/setores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, nome: (input.nome || '').toUpperCase() })
+    })
     if (!r.ok) throw new Error('Falha ao criar setor')
     return await r.json()
   }
   try {
     const { data, error } = await supabase
       .from('setores')
-      .insert(input)
+      .insert({ ...input, nome: (input.nome || '').toUpperCase() })
       .select('*')
       .single()
     if (error) throw error
     return data as Setor
   } catch {
-    const r = await fetch(`${apiUrl}/setores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+    const r = await fetch(`${apiUrl}/setores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...input, nome: (input.nome || '').toUpperCase() })
+    })
     if (!r.ok) throw new Error('Falha ao criar setor')
     return await r.json()
   }
@@ -59,21 +67,31 @@ export async function createSetor(input: Omit<Setor, 'id' | 'created_at'>): Prom
 
 export async function updateSetor(id: string, input: Partial<Omit<Setor, 'id' | 'created_at'>>): Promise<Setor> {
   if (useRest) {
-    const r = await fetch(`${apiUrl}/setores/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+    const patch = { ...input, ...(input.nome ? { nome: input.nome.toUpperCase() } : {}) }
+    const r = await fetch(`${apiUrl}/setores/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    })
     if (!r.ok) throw new Error('Falha ao atualizar setor')
     return await r.json()
   }
   try {
     const { data, error } = await supabase
       .from('setores')
-      .update(input)
+      .update({ ...input, ...(input.nome ? { nome: input.nome.toUpperCase() } : {}) })
       .eq('id', id)
       .select('*')
       .single()
     if (error) throw error
     return data as Setor
   } catch {
-    const r = await fetch(`${apiUrl}/setores/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+    const patch = { ...input, ...(input.nome ? { nome: input.nome.toUpperCase() } : {}) }
+    const r = await fetch(`${apiUrl}/setores/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    })
     if (!r.ok) throw new Error('Falha ao atualizar setor')
     return await r.json()
   }

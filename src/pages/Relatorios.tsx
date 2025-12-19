@@ -316,7 +316,7 @@ const Relatorios = () => {
                 concluidos.map((c) => (
                   <TableRow
                     key={c.id}
-                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                     onDoubleClick={() => {
                       setSelected(c)
                       setFormData({

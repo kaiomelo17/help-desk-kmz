@@ -231,7 +231,7 @@ const Produtos = () => {
               {filteredProducts.map((product) => (
                 <TableRow
                   key={product.id}
-                  className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                  className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                   onDoubleClick={() => handleEdit(product)}
                 >
                   <TableCell>{product.nome}</TableCell>
@@ -420,7 +420,7 @@ const Produtos = () => {
                 saidasData.map((s, idx) => (
                   <TableRow
                     key={`${s.id}-${idx}`}
-                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                     onDoubleClick={() => {
                       setSelectedSaida(s)
                       setSaidaEditForm({

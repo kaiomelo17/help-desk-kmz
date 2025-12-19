@@ -412,7 +412,7 @@ const Chamados = () => {
                 {orderedTickets.map((ticket) => (
                   <TableRow
                     key={ticket.id}
-                    className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                    className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                     onDoubleClick={() => handleView(ticket)}
                   >
                     <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>
@@ -450,7 +450,7 @@ const Chamados = () => {
                   {myTicketsAll.map((ticket) => (
                     <TableRow
                       key={ticket.id}
-                      className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input"
+                      className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input"
                       onDoubleClick={() => handleView(ticket)}
                     >
                       <TableCell className="truncate max-w-[280px]">{ticket.titulo}</TableCell>

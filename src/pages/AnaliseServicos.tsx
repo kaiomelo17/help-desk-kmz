@@ -184,7 +184,7 @@ const AnaliseServicos = () => {
             </TableHeader>
             <TableBody>
               {filtered.slice(0, 100).map((c) => (
-                <TableRow key={c.id} className="odd:bg-muted/40 even:bg-white hover:bg-muted border-b border-b-[0.25px] border-input">
+                <TableRow key={c.id} className="odd:bg-muted/40 even:bg-card hover:bg-muted border-b border-b-[0.25px] border-input">
                   <TableCell className="font-medium">{c.titulo}</TableCell>
                   <TableCell>{c.tipo_servico}</TableCell>
                   <TableCell><Badge variant={getStatusColor(c.status)}>{c.status}</Badge></TableCell>

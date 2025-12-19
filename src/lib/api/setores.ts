@@ -48,8 +48,11 @@ export async function createSetor(input: Omit<Setor, 'id' | 'created_at'>): Prom
       .single()
     if (error) throw error
     return data as Setor
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar setor:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um setor cadastrado com este nome.')
+    }
     throw error
   }
 }
@@ -74,8 +77,11 @@ export async function updateSetor(id: string, input: Partial<Omit<Setor, 'id' | 
       .single()
     if (error) throw error
     return data as Setor
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao atualizar setor:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um setor cadastrado com este nome.')
+    }
     throw error
   }
 }

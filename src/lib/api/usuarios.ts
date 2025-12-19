@@ -48,8 +48,11 @@ export async function createUsuario(input: { nome: string; username: string; set
       .single()
     if (error) throw error
     return data as Usuario
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar usuário:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um usuário cadastrado com este username.')
+    }
     throw error
   }
 }
@@ -76,8 +79,11 @@ export async function updateUsuario(id: string, input: Partial<{ nome: string; u
       .single()
     if (error) throw error
     return data as Usuario
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao atualizar usuário:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um usuário cadastrado com este username.')
+    }
     throw error
   }
 }

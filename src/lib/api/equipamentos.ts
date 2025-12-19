@@ -53,8 +53,11 @@ export async function createEquipamento(input: Omit<Equipamento, 'id' | 'created
       .single()
     if (error) throw error
     return data as Equipamento
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao criar equipamento:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um equipamento cadastrado com este número de patrimônio.')
+    }
     throw error
   }
 }
@@ -74,8 +77,11 @@ export async function updateEquipamento(id: string, input: Partial<Omit<Equipame
       .single()
     if (error) throw error
     return data as Equipamento
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao atualizar equipamento:', error)
+    if (error?.code === '23505') {
+      throw new Error('Já existe um equipamento cadastrado com este número de patrimônio.')
+    }
     throw error
   }
 }

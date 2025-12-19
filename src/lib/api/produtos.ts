@@ -32,75 +32,51 @@ export async function listProdutos(): Promise<Produto[]> {
       .select('*')
       .order('created_at', { ascending: false })
     if (error) throw error
-    const data = rows ?? []
-    if (!data.length) {
-      const r = await fetch(`${apiUrl}/produtos`)
-      if (r.ok) return await r.json()
-    }
-    return data as Produto[]
-  } catch {
-    const r = await fetch(`${apiUrl}/produtos`)
-    if (!r.ok) throw new Error('API local indisponível')
-    return await r.json()
+    return (rows ?? []) as Produto[]
+  } catch (error) {
+    console.error('Erro ao listar produtos:', error)
+    throw error
   }
 }
 
 export async function createProduto(input: Omit<Produto, 'id' | 'created_at'>): Promise<Produto> {
   if (useRest) {
-    const r = await fetch(`${apiUrl}/produtos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
+    const r = await fetch(`${apiUrl}/produtos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
     if (!r.ok) throw new Error('Falha ao criar produto')
     return await r.json()
   }
   try {
-    const { data: row, error } = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .insert(input)
       .select('*')
       .single()
     if (error) throw error
-    return row as Produto
-  } catch {
-    const r = await fetch(`${apiUrl}/produtos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
-    if (!r.ok) throw new Error('Falha ao criar produto')
-    return await r.json()
+    return data as Produto
+  } catch (error) {
+    console.error('Erro ao criar produto:', error)
+    throw error
   }
 }
 
 export async function updateProduto(id: string, input: Partial<Omit<Produto, 'id' | 'created_at'>>): Promise<Produto> {
   if (useRest) {
-    const r = await fetch(`${apiUrl}/produtos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
+    const r = await fetch(`${apiUrl}/produtos/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
     if (!r.ok) throw new Error('Falha ao atualizar produto')
     return await r.json()
   }
   try {
-    const { data: row, error } = await supabase
+    const { data, error } = await supabase
       .from('produtos')
       .update(input)
       .eq('id', id)
       .select('*')
       .single()
     if (error) throw error
-    return row as Produto
-  } catch {
-    const r = await fetch(`${apiUrl}/produtos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
-    if (!r.ok) throw new Error('Falha ao atualizar produto')
-    return await r.json()
+    return data as Produto
+  } catch (error) {
+    console.error('Erro ao atualizar produto:', error)
+    throw error
   }
 }
 
@@ -116,9 +92,9 @@ export async function deleteProduto(id: string): Promise<void> {
       .delete()
       .eq('id', id)
     if (error) throw error
-  } catch {
-    const r = await fetch(`${apiUrl}/produtos/${id}`, { method: 'DELETE' })
-    if (!r.ok && r.status !== 204) throw new Error('Falha ao excluir produto')
+  } catch (error) {
+    console.error('Erro ao excluir produto:', error)
+    throw error
   }
 }
 

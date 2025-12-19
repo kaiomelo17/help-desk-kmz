@@ -23,16 +23,10 @@ export async function listSetores(): Promise<Setor[]> {
       .select('*')
       .order('created_at', { ascending: false })
     if (error) throw error
-    const rows = data ?? []
-    if (!rows.length) {
-      const r = await fetch(`${apiUrl}/setores`)
-      if (r.ok) return await r.json()
-    }
-    return rows as Setor[]
-  } catch {
-    const r = await fetch(`${apiUrl}/setores`)
-    if (!r.ok) throw new Error('API local indisponível')
-    return await r.json()
+    return (data ?? []) as Setor[]
+  } catch (error) {
+    console.error('Erro ao listar setores:', error)
+    throw error
   }
 }
 
@@ -54,14 +48,9 @@ export async function createSetor(input: Omit<Setor, 'id' | 'created_at'>): Prom
       .single()
     if (error) throw error
     return data as Setor
-  } catch {
-    const r = await fetch(`${apiUrl}/setores`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, nome: (input.nome || '').toUpperCase() })
-    })
-    if (!r.ok) throw new Error('Falha ao criar setor')
-    return await r.json()
+  } catch (error) {
+    console.error('Erro ao criar setor:', error)
+    throw error
   }
 }
 
@@ -85,15 +74,9 @@ export async function updateSetor(id: string, input: Partial<Omit<Setor, 'id' | 
       .single()
     if (error) throw error
     return data as Setor
-  } catch {
-    const patch = { ...input, ...(input.nome ? { nome: input.nome.toUpperCase() } : {}) }
-    const r = await fetch(`${apiUrl}/setores/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch)
-    })
-    if (!r.ok) throw new Error('Falha ao atualizar setor')
-    return await r.json()
+  } catch (error) {
+    console.error('Erro ao atualizar setor:', error)
+    throw error
   }
 }
 
@@ -109,8 +92,8 @@ export async function deleteSetor(id: string): Promise<void> {
       .delete()
       .eq('id', id)
     if (error) throw error
-  } catch {
-    const r = await fetch(`${apiUrl}/setores/${id}`, { method: 'DELETE' })
-    if (!r.ok && r.status !== 204) throw new Error('Falha ao excluir setor')
+  } catch (error) {
+    console.error('Erro ao excluir setor:', error)
+    throw error
   }
 }

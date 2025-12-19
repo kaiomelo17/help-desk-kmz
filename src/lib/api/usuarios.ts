@@ -26,16 +26,10 @@ export async function listUsuarios(): Promise<Usuario[]> {
       .select('*')
       .order('created_at', { ascending: false })
     if (error) throw error
-    const rows = data ?? []
-    if (!rows.length) {
-      const r = await fetch(`${apiUrl}/usuarios`)
-      if (r.ok) return await r.json()
-    }
-    return rows as Usuario[]
-  } catch {
-    const r = await fetch(`${apiUrl}/usuarios`)
-    if (!r.ok) throw new Error('API local indisponível')
-    return await r.json()
+    return (data ?? []) as Usuario[]
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error)
+    throw error
   }
 }
 
@@ -54,10 +48,9 @@ export async function createUsuario(input: { nome: string; username: string; set
       .single()
     if (error) throw error
     return data as Usuario
-  } catch {
-    const r = await fetch(`${apiUrl}/usuarios`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    if (!r.ok) throw new Error('Falha ao criar usuário')
-    return await r.json()
+  } catch (error) {
+    console.error('Erro ao criar usuário:', error)
+    throw error
   }
 }
 
@@ -83,10 +76,9 @@ export async function updateUsuario(id: string, input: Partial<{ nome: string; u
       .single()
     if (error) throw error
     return data as Usuario
-  } catch {
-    const r = await fetch(`${apiUrl}/usuarios/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    if (!r.ok) throw new Error('Falha ao atualizar usuário')
-    return await r.json()
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error)
+    throw error
   }
 }
 
@@ -102,8 +94,8 @@ export async function deleteUsuario(id: string): Promise<void> {
       .delete()
       .eq('id', id)
     if (error) throw error
-  } catch {
-    const r = await fetch(`${apiUrl}/usuarios/${id}`, { method: 'DELETE' })
-    if (!r.ok && r.status !== 204) throw new Error('Falha ao excluir usuário')
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error)
+    throw error
   }
 }

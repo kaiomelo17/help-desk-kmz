@@ -11,6 +11,8 @@ export type Setor = {
   created_at?: string
 }
 
+import { handleApiError } from '../utils'
+
 export async function listSetores(): Promise<Setor[]> {
   if (useRest) {
     const r = await fetch(`${apiUrl}/setores`)
@@ -25,8 +27,7 @@ export async function listSetores(): Promise<Setor[]> {
     if (error) throw error
     return (data ?? []) as Setor[]
   } catch (error) {
-    console.error('Erro ao listar setores:', error)
-    throw error
+    handleApiError(error, 'listar setores')
   }
 }
 
@@ -49,11 +50,10 @@ export async function createSetor(input: Omit<Setor, 'id' | 'created_at'>): Prom
     if (error) throw error
     return data as Setor
   } catch (error: any) {
-    console.error('Erro ao criar setor:', error)
     if (error?.code === '23505') {
       throw new Error('Já existe um setor cadastrado com este nome.')
     }
-    throw error
+    handleApiError(error, 'criar setor')
   }
 }
 
@@ -78,11 +78,10 @@ export async function updateSetor(id: string, input: Partial<Omit<Setor, 'id' | 
     if (error) throw error
     return data as Setor
   } catch (error: any) {
-    console.error('Erro ao atualizar setor:', error)
     if (error?.code === '23505') {
       throw new Error('Já existe um setor cadastrado com este nome.')
     }
-    throw error
+    handleApiError(error, 'atualizar setor')
   }
 }
 
@@ -99,7 +98,6 @@ export async function deleteSetor(id: string): Promise<void> {
       .eq('id', id)
     if (error) throw error
   } catch (error) {
-    console.error('Erro ao excluir setor:', error)
-    throw error
+    handleApiError(error, 'excluir setor')
   }
 }

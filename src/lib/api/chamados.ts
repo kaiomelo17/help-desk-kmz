@@ -22,18 +22,24 @@ export type Chamado = {
   created_at?: string
 }
 
+import { handleApiError } from '../utils'
+
 export async function listChamados(): Promise<Chamado[]> {
   if (useRest) {
     const r = await fetch(`${apiUrl}/chamados`)
     if (!r.ok) throw new Error('API local indisponível')
     return await r.json()
   }
-  const { data, error } = await supabase
-    .from('chamados')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (error) throw new Error(error.message)
-  return data ?? []
+  try {
+    const { data, error } = await supabase
+      .from('chamados')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw new Error(error.message)
+    return data ?? []
+  } catch (error) {
+    handleApiError(error, 'listar chamados')
+  }
 }
 
 export async function createChamado(input: Omit<Chamado, 'id' | 'created_at' | 'prioridade' | 'status'> & { prioridade?: Chamado['prioridade']; status?: Chamado['status'] }): Promise<Chamado> {
@@ -43,13 +49,17 @@ export async function createChamado(input: Omit<Chamado, 'id' | 'created_at' | '
     if (!r.ok) throw new Error('Falha ao abrir chamado')
     return await r.json()
   }
-  const { data, error } = await supabase
-    .from('chamados')
-    .insert({ ...input })
-    .select('*')
-    .single()
-  if (error) throw new Error(error.message)
-  return data as Chamado
+  try {
+    const { data, error } = await supabase
+      .from('chamados')
+      .insert({ ...input })
+      .select('*')
+      .single()
+    if (error) throw new Error(error.message)
+    return data as Chamado
+  } catch (error) {
+    handleApiError(error, 'criar chamado')
+  }
 }
 
 export async function updateChamado(id: string, input: Partial<Omit<Chamado, 'id' | 'created_at'>>): Promise<Chamado> {

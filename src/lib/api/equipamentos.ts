@@ -20,6 +20,8 @@ export type Equipamento = {
   created_at?: string
 }
 
+import { handleApiError } from '../utils'
+
 export async function listEquipamentos(): Promise<Equipamento[]> {
   if (useRest) {
     const r = await fetch(`${apiUrl}/equipamentos`)
@@ -34,8 +36,7 @@ export async function listEquipamentos(): Promise<Equipamento[]> {
     if (error) throw error
     return (data ?? []) as Equipamento[]
   } catch (error) {
-    console.error('Erro ao listar equipamentos:', error)
-    throw error
+    handleApiError(error, 'listar equipamentos')
   }
 }
 
@@ -54,11 +55,10 @@ export async function createEquipamento(input: Omit<Equipamento, 'id' | 'created
     if (error) throw error
     return data as Equipamento
   } catch (error: any) {
-    console.error('Erro ao criar equipamento:', error)
     if (error?.code === '23505') {
       throw new Error('Já existe um equipamento cadastrado com este número de patrimônio.')
     }
-    throw error
+    handleApiError(error, 'criar equipamento')
   }
 }
 
@@ -78,11 +78,10 @@ export async function updateEquipamento(id: string, input: Partial<Omit<Equipame
     if (error) throw error
     return data as Equipamento
   } catch (error: any) {
-    console.error('Erro ao atualizar equipamento:', error)
     if (error?.code === '23505') {
       throw new Error('Já existe um equipamento cadastrado com este número de patrimônio.')
     }
-    throw error
+    handleApiError(error, 'atualizar equipamento')
   }
 }
 
@@ -99,7 +98,6 @@ export async function deleteEquipamento(id: string): Promise<void> {
       .eq('id', id)
     if (error) throw error
   } catch (error) {
-    console.error('Erro ao excluir equipamento:', error)
-    throw error
+    handleApiError(error, 'excluir equipamento')
   }
 }
